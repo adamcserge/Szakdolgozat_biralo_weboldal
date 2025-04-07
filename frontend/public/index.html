@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="hu">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hallgatók</title>
+  </head>
+  <body>
+    <h1>Hallgatók adatainak megjelenítése</h1>
+    <button id="loadDataButton">Adatok betöltése</button>
+    <ul id="hallgatoList"></ul>
+
+    <script>
+      document
+        .getElementById("loadDataButton")
+        .addEventListener("click", async () => {
+          try {
+            // API hívás a backendhez a hallgatók lekérdezésére
+            const response = await fetch("http://localhost:8080/api/hallgatok");
+            const data = await response.json();
+
+            // A listát ürítjük a frissítés előtt
+            const listElement = document.getElementById("hallgatoList");
+            listElement.innerHTML = "";
+
+            // Adatok hozzáadása a listához
+            data.forEach((hallgato) => {
+              const listItem = document.createElement("li");
+              listItem.textContent = `${hallgato.hallgatoNEV} - ${hallgato.hallgatoNK} - ${hallgato.hallgatoEMAIL}`;
+              listElement.appendChild(listItem);
+            });
+          } catch (error) {
+            alert("Hiba történt az adatok betöltésekor: " + error.message);
+          }
+        });
+    </script>
+  </body>
+</html>
