@@ -17,7 +17,7 @@
         .addEventListener("click", async () => {
           try {
             // API hívás a backendhez a hallgatók lekérdezésére
-            const response = await fetch("http://localhost:8080/api/hallgatok");
+            const response = await fetch("http://localhost:3000/api/hallgatok");
             const data = await response.json();
 
             // A listát ürítjük a frissítés előtt

@@ -25,7 +25,7 @@ db.connect((err) => {
 });
 
 // Indítsuk el a szervert
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Backend fut a ${PORT} porton`));
 
 // API végpont: lekérdezi az adatokat a MySQL-ből
