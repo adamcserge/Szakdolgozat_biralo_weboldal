@@ -5,13 +5,71 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hallgatók</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
   </head>
   <body>
     <h1>Hallgatók adatainak megjelenítése</h1>
     <button id="loadDataButton">Adatok betöltése</button>
     <ul id="hallgatoList"></ul>
 
+    <div id="app">
+      <!--<h2>Hallgató hozzáadása</h2>
+      <input v-model="nev" placeholder="Név" />
+      <input v-model="neptun" placeholder="Neptun kód" />
+      <input v-model="email" placeholder="Email" />
+      <button @click="kuldes">Küldés</button>
+      <p>{{ uzenet }}</p>-->
+    </div>
+
     <script>
+      new Vue({
+        el: "#app",
+        template: `
+    <div>
+      <h2>Hallgató hozzáadása</h2>
+      <input v-model="nev" placeholder="Név" />
+      <input v-model="neptun" placeholder="Neptun kód" />
+      <input v-model="email" placeholder="Email" />
+      <button @click="kuldes">Küldés</button>
+      <p>{{ uzenet }}</p>
+    </div>
+  `,
+        data() {
+          return {
+            nev: "",
+            neptun: "",
+            email: "",
+            uzenet: "",
+          };
+        },
+        methods: {
+          async kuldes() {
+            try {
+              const res = await fetch("http://localhost:3000/api/hallgato", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  hallgatoNEV: this.nev,
+                  hallgatoNK: this.neptun,
+                  hallgatoEMAIL: this.email,
+                }),
+              });
+
+              if (!res.ok) {
+                throw new Error(`HTTP hiba! Állapot: ${res.status}`);
+              }
+
+              const data = await res.json();
+              this.uzenet = data.message;
+              this.nev = this.neptun = this.email = "";
+            } catch (err) {
+              console.error("Hiba történt:", err);
+              this.uzenet = "Hiba történt: " + err.message;
+            }
+          },
+        },
+      });
+
       document
         .getElementById("loadDataButton")
         .addEventListener("click", async () => {

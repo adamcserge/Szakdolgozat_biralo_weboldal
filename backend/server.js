@@ -28,7 +28,7 @@ db.connect((err) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Backend fut a ${PORT} porton`));
 
-// API végpont: lekérdezi az adatokat a MySQL-ből
+// Összes hallgató lekérdezése
 app.get("/api/hallgatok", (req, res) => {
   db.query("SELECT * FROM hallgato", (err, results) => {
     if (err) {
@@ -39,5 +39,39 @@ app.get("/api/hallgatok", (req, res) => {
     res.json(results);
     // Kiírja a lekért adatokat a terminálba
     console.log("Hallgatók adatainak lekérdezése:", results);
+  });
+});
+// Egy adott hallgató lekérdezése ID alapján
+app.get("/api/hallgatok/id", (req, res) => {
+  const { id } = req.params;
+  db.query(
+    "SELECT * FROM hallgato WHERE hallgatoID = ?;",
+    [id],
+    (err, results) => {
+      if (err) {
+        res.status(500).send(err);
+        return;
+      }
+      res.json(results);
+      console.log("Hallgató adatainak lekérdezése:", results);
+    }
+  );
+});
+
+// Új hallgató hozzáadása
+app.post("/api/hallgato", (req, res) => {
+  const { hallgatoNEV, hallgatoNK, hallgatoEMAIL } = req.body;
+
+  if (!hallgatoNEV || !hallgatoNK || !hallgatoEMAIL) {
+    return res.status(400).json({ error: "Hiányzó adatok" });
+  }
+
+  const sql = `INSERT INTO hallgato (hallgatoNEV, hallgatoNK, hallgatoEMAIL) VALUES (?, ?, ?)`;
+  db.query(sql, [hallgatoNEV, hallgatoNK, hallgatoEMAIL], (err, result) => {
+    if (err) {
+      console.error("Hiba:", err);
+      return res.status(500).json({ error: "Adatbevitel sikertelen" });
+    }
+    res.json({ message: "Sikeres adatbevitel", result });
   });
 });

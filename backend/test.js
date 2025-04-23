@@ -1,12 +1,11 @@
 require("dotenv").config();
 const express = require("express");
 const mysql = require("mysql2");
-const path = require("path");
 const cors = require("cors");
 
 const app = express();
 app.use(express.json());
-app.use(cors()); // Ha szükséges, engedélyezzük a CORS-t más domain-ek számára
+app.use(cors());
 
 // MySQL kapcsolat beállítása
 const db = mysql.createConnection({
@@ -25,6 +24,10 @@ db.connect((err) => {
   console.log("✅ MySQL kapcsolat sikeres");
 });
 
+// Indítsuk el a szervert
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 Backend fut a ${PORT} porton`));
+
 // API végpont: lekérdezi az adatokat a MySQL-ből
 app.get("/api/hallgatok", (req, res) => {
   db.query("SELECT * FROM hallgato", (err, results) => {
@@ -38,17 +41,3 @@ app.get("/api/hallgatok", (req, res) => {
     console.log("Hallgatók adatainak lekérdezése:", results);
   });
 });
-
-// Statikus fájlok kiszolgálása a frontend buildelt fájljaiból
-app.use(express.static(path.join(__dirname, "frontend", "dist")));
-
-// Ha nincs találat az API-nál, a frontend index.html fájlt küldjük vissza
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "frontend", "dist", "index.html"));
-});
-
-// Indítsuk el a szervert
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log(`🚀 Backend és frontend egyesítve a ${PORT} porton`)
-);
