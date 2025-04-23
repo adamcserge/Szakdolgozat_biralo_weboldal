@@ -42,10 +42,11 @@ app.get("/api/hallgatok", (req, res) => {
   });
 });
 // Egy adott hallgató lekérdezése ID alapján
-app.get("/api/hallgatok/id", (req, res) => {
+app.get("/api/hallgatok/:id", (req, res) => {
   const { id } = req.params;
+  console.log("Lekérdezett ID:", id);
   db.query(
-    "SELECT * FROM hallgato WHERE hallgatoID = ?;",
+    "SELECT * FROM hallgato WHERE hallgatoID = ?",
     [id],
     (err, results) => {
       if (err) {
