@@ -12,20 +12,7 @@
     <button id="loadDataButton">Adatok betöltése</button>
     <ul id="hallgatoList"></ul>
 
-    <div id="app">
-      <!--<h2>Hallgató hozzáadása</h2>
-      <input v-model="nev" placeholder="Név" />
-      <input v-model="neptun" placeholder="Neptun kód" />
-      <input v-model="email" placeholder="Email" />
-      <button @click="kuldes">Küldés</button>
-      <p>{{ uzenet }}</p>-->
-    </div>
-
-    <script>
-      new Vue({
-        el: "#app",
-        template: `
-    <div>
+    <div id="app-hozzaadas">
       <h2>Hallgató hozzáadása</h2>
       <input v-model="nev" placeholder="Név" />
       <input v-model="neptun" placeholder="Neptun kód" />
@@ -33,7 +20,61 @@
       <button @click="kuldes">Küldés</button>
       <p>{{ uzenet }}</p>
     </div>
-  `,
+
+    <div id="app-IDlekerdezes">
+      <h2>Hallgató lekérdezése ID alapján</h2>
+      <input v-model="keresettID" type="number" placeholder="Hallgató ID" />
+      <button @click="keresHallgato">Keresés</button>
+      <div v-if="hallgato">
+        <h3>Hallgató adatai:</h3>
+        <p>Név: {{ hallgato.hallgatoNEV }}</p>
+        <p>Neptun kód: {{ hallgato.hallgatoNK }}</p>
+        <p>Email: {{ hallgato.hallgatoEMAIL }}</p>
+      </div>
+      <p v-if="hibaUzenet" style="color: red">{{ hibaUzenet }}</p>
+    </div>
+
+    <script>
+      new Vue({
+        el: "#app-IDlekerdezes",
+        data() {
+          return {
+            keresettID: "",
+            hallgato: null,
+            hibaUzenet: "",
+          };
+        },
+        methods: {
+          async keresHallgato() {
+            try {
+              const res = await fetch(
+                `http://localhost:3000/api/hallgatok/${this.keresettID}`
+              );
+              if (!res.ok) {
+                throw new Error(`Hiba történt: ${res.status}`);
+              }
+              const data = await res.json();
+              if (data.length === 0) {
+                this.hibaUzenet = "Nem található hallgató ezzel az ID-val.";
+                this.hallgato = null;
+              } else {
+                this.hallgato = data[0];
+                this.hibaUzenet = "";
+              }
+            } catch (err) {
+              console.error(err);
+              this.hibaUzenet = "Hiba történt a lekérdezés során.";
+              this.hallgato = null;
+            }
+          },
+        },
+      });
+    </script>
+
+    <script>
+      new Vue({
+        el: "#app-hozzaadas",
+
         data() {
           return {
             nev: "",
@@ -56,7 +97,7 @@
               });
 
               if (!res.ok) {
-                throw new Error(`HTTP hiba! Állapot: ${res.status}`);
+                throw new Error(`Helytelen adat (${res.status})`);
               }
 
               const data = await res.json();
