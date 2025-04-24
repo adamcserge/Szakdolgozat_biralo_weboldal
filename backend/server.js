@@ -51,6 +51,7 @@ app.use(
     cookie: {
       secure: false, // HTTPS esetén állítsd `true`-ra
       httpOnly: true, // Csak a szerver férhet hozzá a cookie-hoz
+      maxAge: 60 * 60 * 1000, // Cookie érvényességi ideje (1 óra)
     },
   })
 );
@@ -146,6 +147,14 @@ app.post("/api/register", async (req, res) => {
 // Bejelentkezés
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
+
+  // Ellenőrizzük, hogy van-e már bejelentkezett felhasználó
+  if (req.session.user) {
+    return res
+      .status(400)
+      .send("Először jelentkezz ki, mielőtt újra bejelentkezel.");
+  }
+
   const [users] = await pool.execute(
     "SELECT * FROM resztvevok WHERE rvEmail = ? AND rvJelszo = ?",
     [email, password]

@@ -7,6 +7,7 @@
     <title>Hallgatók</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="index.css" />
   </head>
   <body>
     <h1>Hallgatók adatainak megjelenítése</h1>
@@ -138,22 +139,34 @@
         });
     </script>
 
-    <div id="app-bejelentes">
-      <h2>Bejelentkezés</h2>
-      <input v-model="email" placeholder="email" />
-      <input v-model="password" type="password" placeholder="password" />
-      <button @click="login">Bejelentkezés</button>
-      <p>{{ message }}</p>
+    <div id="app-auth">
+      <!-- Bejelentkezés -->
+      <div v-if="!user">
+        <h2>Bejelentkezés</h2>
+        <input v-model="email" placeholder="email" />
+        <input v-model="password" type="password" placeholder="password" />
+        <button @click="login">Bejelentkezés</button>
+        <p>{{ message }}</p>
+      </div>
+      <!-- Kijelentkezés -->
+      <div v-else>
+        <button @click="logout">Kijelentkezés</button>
+        <p>{{ message }}</p>
+        <h2>Üdvözlünk {{ user.rvFelhasznalonev }}!</h2>
+        <p><strong>Email:</strong> {{ user.rvEmail }}</p>
+        <p><strong>Felhasználónév:</strong> {{ user.rvFelhasznalonev }}</p>
+      </div>
     </div>
 
     <script>
       new Vue({
-        el: "#app-bejelentes",
+        el: "#app-auth",
         data() {
           return {
             email: "",
             password: "",
             message: "",
+            user: null,
           };
         },
         methods: {
@@ -164,35 +177,20 @@
                 password: this.password,
               });
               this.message = res.data.message || "Sikeres bejelentkezés!";
+
+              const userRes = await axios.get("http://localhost:3000/api/user");
+              this.user = userRes.data;
             } catch (err) {
               console.error(err);
               this.message =
-                err.response?.data?.error ||
-                "Hiba történt a bejelentkezés során.";
+                err.response?.data || "Hiba történt a bejelentkezés során.";
             }
           },
-        },
-      });
-    </script>
-    <!-- Kijelentkezés -->
-    <div id="app-kijelentkezes">
-      <button @click="logout">Kijelentkezés</button>
-      <p>{{ message }}</p>
-    </div>
-
-    <script>
-      new Vue({
-        el: "#app-kijelentkezes",
-        data() {
-          return {
-            message: "",
-          };
-        },
-        methods: {
           async logout() {
             try {
               const res = await axios.post("http://localhost:3000/api/logout");
               this.message = res.data || "Sikeresen kiléptél!";
+              this.user = null;
             } catch (err) {
               console.error(err);
               this.message =
@@ -200,6 +198,14 @@
                 "Hiba történt a kijelentkezés során.";
             }
           },
+        },
+        async created() {
+          try {
+            const res = await axios.get("http://localhost:3000/api/user");
+            this.user = res.data;
+          } catch (err) {
+            console.log("Nem vagy bejelentkezve.");
+          }
         },
       });
     </script>
