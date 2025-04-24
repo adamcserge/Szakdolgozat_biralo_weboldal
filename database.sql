@@ -3,21 +3,21 @@ CREATE DATABASE `szakdolgozat_biralo`;
 USE `szakdolgozat_biralo`;
 
 CREATE TABLE `hallgato` (
-  `hallgatoID` INT PRIMARY KEY,
+  `hallgatoID` INT AUTO_INCREMENT PRIMARY KEY, 
   `hallgatoNEV` VARCHAR(255),
   `hallgatoNK` VARCHAR(255),
   `hallgatoEMAIL` VARCHAR(255)
 );
 
 CREATE TABLE `szervezet` (
-  `szervezetID` INT PRIMARY KEY,
+  `szervezetID` INT AUTO_INCREMENT PRIMARY KEY,
   `szervezetNEV` VARCHAR(255),
   `felettesID` INT,
   FOREIGN KEY (`felettesID`) REFERENCES `szervezet` (`szervezetID`)
 );
 
 CREATE TABLE `resztvevok` (
-  `rvID` INT PRIMARY KEY,
+  `rvID` INT AUTO_INCREMENT PRIMARY KEY,
   `rvSzervezetID` INT,
   `rvNEV` VARCHAR(255),
   `rvVegzetseg` INT,
@@ -28,7 +28,7 @@ CREATE TABLE `resztvevok` (
 );
 
 CREATE TABLE `tema` (
-  `temaID` INT PRIMARY KEY,
+  `temaID` INT AUTO_INCREMENT PRIMARY KEY,
   `temaCim` VARCHAR(255),
   `temacsoport` INT,
   `hallgatoID` INT,
@@ -59,7 +59,7 @@ CREATE TABLE `biralo` (
 );
 
 CREATE TABLE `dokumentumok` (
-  `dokID` INT PRIMARY KEY,
+  `dokID` INT AUTO_INCREMENT PRIMARY KEY,
   `temaID` INT,
   `eleres` VARCHAR(255),
   FOREIGN KEY (`temaID`) REFERENCES `tema` (`temaID`)

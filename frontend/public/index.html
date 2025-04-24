@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hallgatók</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   </head>
   <body>
     <h1>Hallgatók adatainak megjelenítése</h1>
@@ -35,6 +36,8 @@
     </div>
 
     <script>
+      // Engedélyezzük a cookie-k továbbítását minden Axios kérésnél
+      axios.defaults.withCredentials = true;
       new Vue({
         el: "#app-IDlekerdezes",
         data() {
@@ -133,6 +136,72 @@
             alert("Hiba történt az adatok betöltésekor: " + error.message);
           }
         });
+    </script>
+
+    <div id="app-bejelentes">
+      <h2>Bejelentkezés</h2>
+      <input v-model="email" placeholder="email" />
+      <input v-model="password" type="password" placeholder="password" />
+      <button @click="login">Bejelentkezés</button>
+      <p>{{ message }}</p>
+    </div>
+
+    <script>
+      new Vue({
+        el: "#app-bejelentes",
+        data() {
+          return {
+            email: "",
+            password: "",
+            message: "",
+          };
+        },
+        methods: {
+          async login() {
+            try {
+              const res = await axios.post("http://localhost:3000/api/login", {
+                email: this.email,
+                password: this.password,
+              });
+              this.message = res.data.message || "Sikeres bejelentkezés!";
+            } catch (err) {
+              console.error(err);
+              this.message =
+                err.response?.data?.error ||
+                "Hiba történt a bejelentkezés során.";
+            }
+          },
+        },
+      });
+    </script>
+    <!-- Kijelentkezés -->
+    <div id="app-kijelentkezes">
+      <button @click="logout">Kijelentkezés</button>
+      <p>{{ message }}</p>
+    </div>
+
+    <script>
+      new Vue({
+        el: "#app-kijelentkezes",
+        data() {
+          return {
+            message: "",
+          };
+        },
+        methods: {
+          async logout() {
+            try {
+              const res = await axios.post("http://localhost:3000/api/logout");
+              this.message = res.data || "Sikeresen kiléptél!";
+            } catch (err) {
+              console.error(err);
+              this.message =
+                err.response?.data?.error ||
+                "Hiba történt a kijelentkezés során.";
+            }
+          },
+        },
+      });
     </script>
   </body>
 </html>
