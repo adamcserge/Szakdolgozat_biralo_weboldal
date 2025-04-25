@@ -1,0 +1,84 @@
+/* Alap stílusok */
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+  background-color: #f8f8f8;
+  color: #333;
+}
+
+/* Főcím */
+h1 {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+/* Adatlista */
+ul#hallgatoList {
+  list-style: none;
+  padding: 0;
+  max-width: 600px;
+  margin: 0 auto 30px auto;
+}
+
+ul#hallgatoList li {
+  background-color: #fff;
+  padding: 10px;
+  margin-bottom: 8px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+/* Űrlap konténerek */
+#app-hozzaadas,
+#app-IDlekerdezes {
+  max-width: 600px;
+  margin: 30px auto;
+  padding: 20px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+input {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  margin: 8px 0 16px 0;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+button {
+  padding: 10px 16px;
+  background-color: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #004c99;
+}
+
+/* Bejelentkezés/kijelentkezés gombok jobb felső sarokban */
+#loginButton,
+#logoutButton,
+#welcomeMessage {
+  position: fixed;
+  top: 15px;
+  right: 20px;
+  z-index: 1000;
+}
+
+#loginButton,
+#logoutButton {
+  margin-left: 10px;
+}
+
+/* Üdvözlő szöveg elrendezése */
+#welcomeMessage {
+  top: 60px;
+  font-weight: bold;
+}

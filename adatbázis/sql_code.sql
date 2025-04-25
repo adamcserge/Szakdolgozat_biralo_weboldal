@@ -1,5 +1,5 @@
 INSERT INTO szervezet (szervezetNEV, felettesID)
-VALUES ('Széchenyi István Egyetem');
+VALUES ('Soproni Egyetem');
 
 INSERT INTO szervezet (szervezetNEV, felettesID)
 VALUES ('Informatika tanszék','1');
@@ -17,11 +17,13 @@ VALUES ('3','Nagy Ágoston','2','nagy.agoston@gmail.com','Nagy Ágoston','0000')
 
 
 select * from szervezet;
+select * from resztvevok;
 
 ALTER TABLE szervezet
 MODIFY COLUMN szervezetID INT AUTO_INCREMENT;
 
 SHOW CREATE TABLE szervezet;
+show create table resztvevok;
 
 ALTER TABLE tema DROP FOREIGN KEY _ibfk_1;
 ALTER TABLE tema

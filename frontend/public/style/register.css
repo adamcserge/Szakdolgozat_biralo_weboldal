@@ -1,0 +1,98 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+
+#app {
+  background-color: white;
+  padding: 30px 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  width: 10 0%;
+  max-width: 400px;
+}
+
+input {
+  display: block;
+  width: 100%;
+  margin: 12px 0;
+  padding: 10px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+p {
+  margin-top: 15px;
+  color: #333;
+}
+
+h2 {
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+/* Hierarchikus lista alapstílus */
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  max-height: 200px; /* Maximális magasság a görgetéshez */
+  overflow-y: auto; /* Görgetés, ha túl sok elem van */
+  background-color: white;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Listaelemek stílusa */
+li {
+  padding: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+li:last-child {
+  border-bottom: none;
+}
+
+/* Hover effekt a listaelemekre */
+li:hover {
+  background-color: #f4f4f4;
+}
+
+/* Kibontás/összecsukás ikonok stílusa */
+li div span:first-child {
+  margin-right: 10px;
+  font-weight: bold;
+  color: #007bff;
+}
+
+/* Kiválasztott elem kiemelése */
+li.selected {
+  background-color: #69b2fff3;
+  color: white;
+}

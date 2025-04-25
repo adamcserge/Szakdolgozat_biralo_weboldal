@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Regisztráció</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="style/register.css" />
+  </head>
+  <body>
+    <div id="app-regisztracio">
+      <h2>Regisztráció</h2>
+
+      <!-- Név, Email, Felhasználónév, Jelszó -->
+      <input v-model="rvNEV" placeholder="Név" />
+      <input v-model="rvEmail" placeholder="Email" />
+      <input v-model="rvFelhasznalonev" placeholder="Felhasználónév" />
+      <input v-model="rvJelszo" type="password" placeholder="Jelszó" />
+
+      <!-- Szervezet választás -->
+      <div>
+        <h3 @click="toggleSzervezetValasztas" style="cursor: pointer">
+          Szervezet választása
+          <span>{{ isSzervezetValasztasOpen ? '-' : '+' }}</span>
+        </h3>
+        <ul v-if="isSzervezetValasztasOpen">
+          <tree-item
+            v-for="szervezet in szervezetek"
+            :key="szervezet.szervezetID"
+            :item="szervezet"
+            :selected-id="selectedSzervezet"
+            @select="selectedSzervezet = $event"
+          ></tree-item>
+        </ul>
+        <p>Kiválasztott szervezet: {{ selectedSzervezet }}</p>
+      </div>
+
+      <!-- Végzettség választás -->
+      <select v-model="selectedVegzettseg">
+        <option value="" disabled selected>Végzettség választása</option>
+        <option value="1">BSc</option>
+        <option value="2">MSc</option>
+        <option value="3">PhD</option>
+      </select>
+
+      <!-- Regisztrációs gomb -->
+      <button @click="register">Regisztrálok</button>
+      <p>{{ uzenet }}</p>
+    </div>
+
+    <script>
+      Vue.component("tree-item", {
+        props: ["item", "selectedId"],
+        data() {
+          return {
+            isOpen: false, // A kibontás állapota
+          };
+        },
+        computed: {
+          hasChildren() {
+            return this.item.children && this.item.children.length > 0;
+          },
+          isSelected() {
+            return this.item.szervezetID === this.selectedId;
+          },
+        },
+        methods: {
+          toggle() {
+            this.isOpen = !this.isOpen;
+          },
+          select() {
+            this.$emit("select", this.item.szervezetID);
+          },
+        },
+        template: `
+          <li :class="{ selected: isSelected }">
+            <div @click="toggle" style="cursor: pointer;">
+              <span v-if="hasChildren">{{ isOpen ? '-' : '+' }}</span>
+              <span @click.stop="select">{{ item.szervezetNEV }}</span>
+            </div>
+            <ul v-if="isOpen && hasChildren">
+              <tree-item
+                v-for="child in item.children"
+                :key="child.szervezetID"
+                :item="child"
+                :selected-id="selectedId"
+                @select="$emit('select', $event)"
+              ></tree-item>
+            </ul>
+          </li>
+        `,
+      });
+
+      new Vue({
+        el: "#app-regisztracio",
+        data() {
+          return {
+            rvNEV: "", // Név
+            rvEmail: "", // Email
+            rvFelhasznalonev: "", // Felhasználónév
+            rvJelszo: "", // Jelszó
+            selectedSzervezet: "", // Kiválasztott szervezet
+            selectedVegzettseg: "", // Kiválasztott végzettség
+            szervezetek: [], // Szervezetek listája
+            uzenet: "", // Üzenet a regisztráció eredményéről
+            isSzervezetValasztasOpen: false, // Szervezet választás kibontás állapota
+          };
+        },
+        mounted() {
+          this.fetchSzervezetek(); // Az oldal betöltődésekor letöltjük a szervezeteket
+        },
+        methods: {
+          // API hívás a szervezetek listájának lekéréséhez
+          async fetchSzervezetek() {
+            try {
+              const response = await axios.get(
+                "http://localhost:3000/api/szervezetek"
+              );
+              const flatData = response.data;
+
+              // Hierarchikus struktúra létrehozása
+              const map = {};
+              flatData.forEach((item) => {
+                map[item.szervezetID] = { ...item, children: [] };
+              });
+
+              const tree = [];
+              flatData.forEach((item) => {
+                if (item.felettesID) {
+                  map[item.felettesID].children.push(map[item.szervezetID]);
+                } else {
+                  tree.push(map[item.szervezetID]);
+                }
+              });
+
+              this.szervezetek = tree;
+            } catch (error) {
+              console.error("Hiba a szervezetek lekérésekor", error);
+            }
+          },
+          // Szervezet választás kibontás/összecsukás
+          toggleSzervezetValasztas() {
+            this.isSzervezetValasztasOpen = !this.isSzervezetValasztasOpen;
+          },
+          // Regisztrációs adatküldés
+          async register() {
+            try {
+              const res = await axios.post(
+                "http://localhost:3000/api/register",
+                {
+                  rvNEV: this.rvNEV,
+                  rvEmail: this.rvEmail,
+                  rvFelhasznalonev: this.rvFelhasznalonev,
+                  rvJelszo: this.rvJelszo,
+                  rvSzervezetID: this.selectedSzervezet,
+                  rvVegzettseg: this.selectedVegzettseg,
+                }
+              );
+
+              this.uzenet = res.data.message || "Sikeres regisztráció!";
+              // Ablak bezárása és üzenet küldése a szülőnek
+              window.opener.postMessage("registerSuccess", "*");
+              window.close();
+            } catch (err) {
+              this.uzenet =
+                "Hiba: " + (err.response?.data?.error || err.message);
+            }
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

@@ -7,7 +7,7 @@
     <title>Hallgatók</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <link rel="stylesheet" href="index.css" />
+    <link rel="stylesheet" href="style/index.css" />
   </head>
   <body>
     <h1>Hallgatók adatainak megjelenítése</h1>
@@ -139,8 +139,8 @@
         });
     </script>
 
-    <div id="app-auth">
-      <!-- Bejelentkezés -->
+    <!-- <div id="app-auth">
+      // Bejelentkezés
       <div v-if="!user">
         <h2>Bejelentkezés</h2>
         <input v-model="email" placeholder="email" />
@@ -148,7 +148,7 @@
         <button @click="login">Bejelentkezés</button>
         <p>{{ message }}</p>
       </div>
-      <!-- Kijelentkezés -->
+      // Kijelentkezés
       <div v-else>
         <button @click="logout">Kijelentkezés</button>
         <p>{{ message }}</p>
@@ -207,6 +207,84 @@
             console.log("Nem vagy bejelentkezve.");
           }
         },
+      });
+    </script>-->
+    <button id="loginButton">Bejelentkezés</button>
+    <button id="logoutButton" style="display: none">Kijelentkezés</button>
+    <p id="welcomeMessage"></p>
+
+    <script>
+      let loginWindow = null;
+
+      document.getElementById("loginButton").addEventListener("click", () => {
+        const width = 450;
+        const height = 500;
+        const left = (window.screen.width - width) / 2;
+        const top = (window.screen.height - height) / 2 - 100;
+
+        loginWindow = window.open(
+          "login.html",
+          "Bejelentkezés",
+          `width=${width},height=${height},left=${left},top=${top},resizable=no,scrollbars=no`
+        );
+      });
+      window.addEventListener("message", (event) => {
+        if (event.data === "loginSuccess") {
+          // bezárjuk az ablakot
+          if (loginWindow) loginWindow.close();
+
+          // újra lekérjük a bejelentkezett felhasználót
+          axios
+            .get("http://localhost:3000/api/user", { withCredentials: true })
+            .then((res) => {
+              const user = res.data;
+              document.getElementById(
+                "welcomeMessage"
+              ).innerText = `Üdv, ${user.rvFelhasznalonev} (${user.rvEmail})!`;
+              document.getElementById("loginButton").style.display = "none";
+              document.getElementById("logoutButton").style.display =
+                "inline-block";
+            })
+            .catch(() => {
+              alert("Nem sikerült lekérdezni a felhasználót.");
+            });
+        }
+      });
+
+      document
+        .getElementById("logoutButton")
+        .addEventListener("click", async () => {
+          try {
+            await axios.post(
+              "http://localhost:3000/api/logout",
+              {},
+              { withCredentials: true }
+            );
+            document.getElementById("welcomeMessage").innerText = "";
+            document.getElementById("loginButton").style.display =
+              "inline-block";
+            document.getElementById("logoutButton").style.display = "none";
+          } catch (err) {
+            alert("Hiba történt a kijelentkezés során.");
+          }
+        });
+
+      // oldal betöltéskor ellenőrizzük, hogy be van-e jelentkezve
+      window.addEventListener("DOMContentLoaded", () => {
+        axios
+          .get("http://localhost:3000/api/user", { withCredentials: true })
+          .then((res) => {
+            const user = res.data;
+            document.getElementById(
+              "welcomeMessage"
+            ).innerText = `Üdv, ${user.rvFelhasznalonev} (${user.rvEmail})!`;
+            document.getElementById("loginButton").style.display = "none";
+            document.getElementById("logoutButton").style.display =
+              "inline-block";
+          })
+          .catch(() => {
+            // nincs bejelentkezve
+          });
       });
     </script>
   </body>

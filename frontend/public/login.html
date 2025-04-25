@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Bejelentkezés</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="style/login.css" />
+  </head>
+  <body>
+    <div id="container">
+      <div id="loginApp">
+        <h2>Bejelentkezés</h2>
+        <input v-model="email" placeholder="Email" />
+        <input v-model="password" type="password" placeholder="Jelszó" />
+        <button @click="login">Bejelentkezés</button>
+        <p>{{ message }}</p>
+      </div>
+
+      <div class="register-link">
+        Még nincs fiókod?
+        <span id="registerLink">Regisztrálj</span>
+      </div>
+    </div>
+
+    <script>
+      new Vue({
+        el: "#loginApp",
+        data() {
+          return {
+            email: "",
+            password: "",
+            message: "",
+          };
+        },
+        methods: {
+          async login() {
+            try {
+              await axios.post(
+                "http://localhost:3000/api/login",
+                {
+                  email: this.email,
+                  password: this.password,
+                },
+                { withCredentials: true }
+              );
+
+              this.message = "Sikeres bejelentkezés!";
+              // Üzenet visszaküldése a főablaknak
+              window.opener.postMessage("loginSuccess", "*");
+            } catch (err) {
+              console.error(err);
+              this.message = "Hibás email vagy jelszó.";
+            }
+          },
+        },
+      });
+    </script>
+
+    <script>
+      document.getElementById("registerLink").addEventListener("click", () => {
+        const width = 450;
+        const height = 500;
+        const left = (window.screen.width - width) / 2;
+        const top = (window.screen.height - height) / 2 - 100;
+
+        loginWindow = window.open(
+          "register.html",
+          "Regisztráció",
+          `width=${width},height=${height},left=${left},top=${top},resizable=no,scrollbars=no`
+        );
+      });
+    </script>
+  </body>
+</html>

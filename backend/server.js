@@ -125,25 +125,6 @@ app.post("/api/hallgato", (req, res) => {
   });
 });
 
-// Regisztráció
-app.post("/api/register", async (req, res) => {
-  const { email, password } = req.body;
-  const [existing] = await pool.execute(
-    "SELECT * FROM resztvevok WHERE rvEmail = ?",
-    [email]
-  );
-
-  if (existing.length > 0) {
-    return res.status(400).send("Ez az e-mail már regisztrált.");
-  }
-
-  await pool.execute(
-    "INSERT INTO resztvevok (rvEmail, rvJelszo) VALUES (?, ?)",
-    [email, password]
-  );
-  res.send("Sikeres regisztráció!");
-});
-
 // Bejelentkezés
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
@@ -185,3 +166,117 @@ app.post("/api/logout", (req, res) => {
     res.send("Sikeresen kiléptél");
   });
 });
+
+/*// Regisztráció
+app.post("/api/register", async (req, res) => {
+  const { email, password } = req.body;
+  const [existing] = await pool.execute(
+    "SELECT * FROM resztvevok WHERE rvEmail = ?",
+    [email]
+  );
+
+  if (existing.length > 0) {
+    return res.status(400).send("Ez az e-mail már regisztrált.");
+  }
+
+  await pool.execute(
+    "INSERT INTO resztvevok (rvEmail, rvJelszo) VALUES (?, ?)",
+    [email, password]
+  );
+  res.send("Sikeres regisztráció!");
+});*/
+
+app.post("/api/register", async (req, res) => {
+  const {
+    rvEmail,
+    rvFelhasznalonev,
+    rvJelszo,
+    rvNEV,
+    rvSzervezetID,
+    rvVegzetseg,
+  } = req.body;
+
+  // Adatbázis lekérdezés a regisztrációhoz
+  const query = `
+    INSERT INTO resztvevok (rvEmail, rvFelhasznalonev, rvNEV, rvSzervezetID, rvVegzetseg, rvJelszo)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  try {
+    await db.execute(query, [
+      rvEmail,
+      rvFelhasznalonev,
+      rvNEV,
+      rvSzervezetID,
+      rvVegzetseg,
+      rvJelszo,
+    ]);
+    res.json({ message: "Sikeres regisztráció!" });
+  } catch (err) {
+    res.status(500).json({ error: "Hiba történt a regisztráció során!" });
+  }
+});
+
+/*app.get("/api/szervezetek", (req, res) => {
+  db.query(
+    "SELECT szervezetID, szervezetNEV FROM szervezet",
+    (err, results) => {
+      if (err) {
+        console.error("Hiba a szervezetek lekérésekor:", err);
+        res
+          .status(500)
+          .json({ error: "Hiba történt a szervezetek lekérésekor" });
+        return;
+      }
+      res.json(results);
+    }
+  );
+});*/
+
+app.get("/api/szervezetek", async (req, res) => {
+  try {
+    const [rows] = await pool.execute(`
+      WITH RECURSIVE szervezeti_hierarchia AS (
+        SELECT szervezetID, szervezetNEV, felettesID, 0 AS szint
+        FROM szervezet
+        WHERE felettesID IS NULL
+        UNION ALL
+        SELECT s.szervezetID, s.szervezetNEV, s.felettesID, sh.szint + 1
+        FROM szervezet s
+        INNER JOIN szervezeti_hierarchia sh ON s.felettesID = sh.szervezetID
+      )
+      SELECT * FROM szervezeti_hierarchia
+      ORDER BY szint, szervezetNEV;
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error("Hiba a szervezetek lekérésekor:", err);
+    res.status(500).json({ error: "Hiba történt a szervezetek lekérésekor" });
+  }
+});
+
+async function fetchSzervezetek() {
+  try {
+    const response = await axios.get("http://localhost:3000/api/szervezetek");
+    const flatData = response.data;
+
+    // Hierarchikus struktúra létrehozása
+    const map = {};
+    flatData.forEach((item) => {
+      map[item.szervezetID] = { ...item, children: [] };
+    });
+
+    const tree = [];
+    flatData.forEach((item) => {
+      if (item.felettesID) {
+        map[item.felettesID].children.push(map[item.szervezetID]);
+      } else {
+        tree.push(map[item.szervezetID]);
+      }
+    });
+
+    this.szervezetek = tree;
+  } catch (error) {
+    console.error("Hiba a szervezetek lekérésekor", error);
+  }
+}

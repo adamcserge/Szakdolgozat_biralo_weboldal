@@ -1,0 +1,83 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+
+#container {
+  display: flex;
+  flex-direction: column; /* Az elemek egymás alá kerülnek */
+  gap: 20px; /* Kisebb távolság a div-ek között */
+  align-items: center; /* Középre igazítás */
+  width: 100%; /* Az elemek szélessége */
+  max-width: 420px; /* Maximális szélesség */
+}
+
+#loginApp {
+  background-color: white;
+  padding: 30px 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  width: 80%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column; /* Az elemek egymás alá kerülnek */
+  justify-content: flex-start; /* Az elemek a tetejére igazítva */
+}
+
+input {
+  display: block;
+  width: 100%;
+  margin: 12px 0;
+  padding: 10px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+p {
+  margin-top: 15px;
+  color: #333;
+}
+
+h2 {
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.register-link {
+  margin-top: 20px;
+  font-size: 1rem;
+  text-align: center;
+}
+
+#registerLink {
+  color: #007bff;
+  cursor: pointer;
+}
+
+#registerLink:hover {
+  text-decoration: underline;
+}
