@@ -8,10 +8,17 @@ import mysql from "mysql2";
 import cors from "cors";
 import axios from "axios";
 import session from "express-session";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 
 axios.defaults.withCredentials = true;
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(express.json());
@@ -63,6 +70,8 @@ app.use(
   })
 );
 
+app.use("/uploads", express.static("uploads"));
+
 db.connect((err) => {
   if (err) {
     console.error("MySQL kapcsolat sikertelen:", err);
@@ -70,10 +79,6 @@ db.connect((err) => {
   }
   console.log("✅ MySQL kapcsolat sikeres");
 });
-
-// Indítsuk el a szervert
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Backend fut a ${PORT} porton`));
 
 // Összes hallgató lekérdezése
 app.get("/api/hallgatok", (req, res) => {
@@ -280,3 +285,74 @@ async function fetchSzervezetek() {
     console.error("Hiba a szervezetek lekérésekor", error);
   }
 }
+
+// Fájlok tárolása az uploads mappában
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/"); // Feltöltési hely
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname)); // Egyedi fájlnév
+  },
+});
+
+const upload = multer({ storage: storage });
+
+// Dokumentum feltöltése
+app.post("/api/feltoltes", upload.single("file"), async (req, res) => {
+  const { temaID, tipus } = req.body;
+  const file = req.file;
+
+  if (!file) {
+    return res.status(400).json({ error: "Nincs fájl feltöltve" });
+  }
+
+  try {
+    // Fájlelérési útvonal és eredeti fájlnév mentése az adatbázisba
+    const sql = `INSERT INTO dokumentumok (temaID, eleres, eredeti_nev, tipus) VALUES (?, ?, ?, ?)`;
+    await pool.execute(sql, [
+      temaID || null,
+      file.filename,
+      file.originalname,
+      tipus || 0,
+    ]);
+    res.json({
+      message: "Fájl sikeresen feltöltve!",
+      fileName: file.originalname,
+    });
+  } catch (error) {
+    console.error("Feltöltési hiba:", error);
+    res.status(500).json({ error: "Hiba történt a fájl mentésekor" });
+  }
+});
+
+const UPLOADS_DIR = path.join(__dirname, "uploads");
+
+// Fájlok lekérdezése
+app.get("/api/feltoltott-fajlok", async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      "SELECT dokID, eredeti_nev, eleres FROM dokumentumok"
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Hiba a fájlok lekérdezésekor:", err);
+    res.status(500).json({ error: "Nem sikerült a fájlok listázása." });
+  }
+});
+
+// Témák lekérdezése
+app.get("/api/temak", async (req, res) => {
+  try {
+    const [rows] = await pool.execute("SELECT temaID, temaCim FROM tema");
+    res.json(rows);
+  } catch (err) {
+    console.error("Hiba a témák lekérdezésekor:", err);
+    res.status(500).json({ error: "Nem sikerült a témák lekérdezése." });
+  }
+});
+
+// Indítsuk el a szervert
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 Backend fut a ${PORT} porton`));

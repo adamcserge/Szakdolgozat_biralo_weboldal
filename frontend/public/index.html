@@ -287,5 +287,112 @@
           });
       });
     </script>
+    <div id="app-feltoltes">
+      <h2>Fájl feltöltése</h2>
+      <input type="file" @change="handleFileUpload" />
+      <select v-model="selectedType">
+        <option value="1">Szakdolgozat</option>
+        <option value="2">Bírálat</option>
+        <option value="3">Egyéb</option>
+      </select>
+      <select v-model="selectedTemaID">
+        <option v-for="tema in temak" :key="tema.temaID" :value="tema.temaID">
+          {{ tema.temaCim }}
+        </option>
+      </select>
+      <button @click="uploadFile">Feltöltés</button>
+      <p>{{ uploadMessage }}</p>
+    </div>
+    <script>
+      new Vue({
+        el: "#app-feltoltes",
+        data() {
+          return {
+            selectedFile: null,
+            selectedType: "1", // Alapértelmezett típus
+            selectedTemaID: null, // Kiválasztott téma ID
+            temak: [], // Témák listája
+            uploadMessage: "",
+          };
+        },
+        methods: {
+          handleFileUpload(event) {
+            this.selectedFile = event.target.files[0];
+          },
+          async fetchTemak() {
+            try {
+              const response = await fetch("http://localhost:3000/api/temak");
+              this.temak = await response.json();
+            } catch (err) {
+              console.error("Hiba történt a témák betöltésekor:", err);
+            }
+          },
+          async uploadFile() {
+            if (!this.selectedFile || !this.selectedTemaID) {
+              this.uploadMessage = "Kérlek válassz ki egy fájlt és egy témát!";
+              return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", this.selectedFile);
+            formData.append("tipus", this.selectedType);
+            formData.append("temaID", this.selectedTemaID);
+
+            try {
+              const res = await fetch("http://localhost:3000/api/feltoltes", {
+                method: "POST",
+                body: formData,
+              });
+
+              if (!res.ok) {
+                throw new Error(
+                  `Hiba történt a fájl feltöltésekor (${res.status})`
+                );
+              }
+
+              const data = await res.json();
+              this.uploadMessage = `A fájl sikeresen feltöltve: ${data.fileName}`;
+            } catch (err) {
+              console.error("Hiba történt:", err);
+              this.uploadMessage = "Hiba történt a fájl feltöltésekor.";
+            }
+          },
+        },
+        async created() {
+          await this.fetchTemak();
+        },
+      });
+    </script>
+    <div id="app-file-list">
+      <h2>Feltöltött fájlok</h2>
+      <button id="loadFilesButton">Fájlok betöltése</button>
+      <ul id="fileList"></ul>
+      <!-- Itt fog megjelenni a fájlok listája -->
+    </div>
+    <script>
+      document
+        .getElementById("loadFilesButton")
+        .addEventListener("click", async () => {
+          try {
+            const response = await fetch(
+              "http://localhost:3000/api/feltoltott-fajlok"
+            );
+            const files = await response.json();
+
+            const listElement = document.getElementById("fileList");
+            listElement.innerHTML = ""; // Először ürítjük a listát
+
+            // Fájlok hozzáadása a listához
+            files.forEach((file) => {
+              const listItem = document.createElement("li");
+              listItem.textContent = `${file.eredeti_nev} (${file.eleres})`; // Eredeti fájlnév és elérési út
+              listElement.appendChild(listItem);
+            });
+          } catch (error) {
+            alert("Hiba történt a fájlok betöltésekor: " + error.message);
+          }
+        });
+    </script>
   </body>
 </html>
+```
