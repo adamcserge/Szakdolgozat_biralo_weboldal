@@ -1,100 +1,174 @@
 <!DOCTYPE html>
 <html lang="hu">
   <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hallgatók</title>
+    <title>Hallgatók kezelése</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link rel="stylesheet" href="style/index.css" />
   </head>
+
   <body>
     <div id="app-auth">
       <div v-if="!auth">
-        <p>Üdvözlünk az oldalon, kérem jelentkezzen be</p>
+        <p>Üdvözlünk az oldalon, kérlek jelentkezz be:</p>
         <button @click="login">Bejelentkezés</button>
       </div>
+
       <div v-else>
         <button @click="logout">Kijelentkezés</button>
         <p>Üdv, {{ user.rvFelhasznalonev }} ({{ user.rvEmail }})!</p>
-        <h1>Hallgatók adatainak megjelenítése</h1>
-        <button id="loadDataButton">Adatok betöltése</button>
-        <ul id="hallgatoList"></ul>
 
-        <div id="app-hozzaadas">
-          <h2>Hallgató hozzáadása</h2>
-          <input v-model="nev" placeholder="Név" />
-          <input v-model="neptun" placeholder="Neptun kód" />
-          <input v-model="email" placeholder="Email" />
-          <button @click="kuldes">Küldés</button>
-          <p>{{ uzenet }}</p>
-        </div>
+        <h1>Hallgatók kezelése</h1>
 
-        <div id="app-IDlekerdezes">
-          <h2>Hallgató lekérdezése ID alapján</h2>
-          <input v-model="keresettID" type="number" placeholder="Hallgató ID" />
-          <button @click="keresHallgato">Keresés</button>
-          <div v-if="hallgato">
-            <h3>Hallgató adatai:</h3>
-            <p>Név: {{ hallgato.hallgatoNEV }}</p>
-            <p>Neptun kód: {{ hallgato.hallgatoNK }}</p>
-            <p>Email: {{ hallgato.hallgatoEMAIL }}</p>
-          </div>
-          <p v-if="hibaUzenet" style="color: red">{{ hibaUzenet }}</p>
-        </div>
+        <!-- Hallgatók listázása -->
+        <button @click="loadHallgatok">Hallgatók betöltése</button>
+        <ul>
+          <li v-for="hallgato in hallgatok" :key="hallgato.hallgatoID">
+            {{ hallgato.hallgatoNEV }} - {{ hallgato.hallgatoNK }} - {{
+            hallgato.hallgatoEMAIL }}
+          </li>
+        </ul>
 
-        <div id="app-feltoltes">
-          <h2>Fájl feltöltése</h2>
-          <input type="file" @change="handleFileUpload" />
-          <select v-model="selectedType">
-            <option value="1">Szakdolgozat</option>
-            <option value="2">Bírálat</option>
-            <option value="3">Egyéb</option>
-          </select>
-          <select v-model="selectedTemaID">
-            <option
-              v-for="tema in temak"
-              :key="tema.temaID"
-              :value="tema.temaID"
-            >
-              {{ tema.temaCim }}
-            </option>
-          </select>
-          <button @click="uploadFile">Feltöltés</button>
-          <p>{{ uploadMessage }}</p>
-        </div>
+        <!-- Hallgató hozzáadása -->
+        <h2>Új hallgató hozzáadása</h2>
+        <input v-model="nev" placeholder="Név" />
+        <input v-model="neptun" placeholder="Neptun kód" />
+        <input v-model="email" placeholder="Email" />
+        <button @click="kuldes">Küldés</button>
+        <p>{{ uzenet }}</p>
 
-        <div id="app-file-list">
-          <h2>Feltöltött fájlok</h2>
-          <button id="loadFilesButton">Fájlok betöltése</button>
-          <ul id="fileList"></ul>
-          <!-- Itt fog megjelenni a fájlok listája -->
+        <!-- Hallgató lekérdezése ID alapján -->
+        <h2>Hallgató keresése ID alapján</h2>
+        <input v-model="keresettID" type="number" placeholder="Hallgató ID" />
+        <button @click="keresHallgato">Keresés</button>
+        <div v-if="hallgato">
+          <h3>Hallgató adatai:</h3>
+          <p>Név: {{ hallgato.hallgatoNEV }}</p>
+          <p>Neptun kód: {{ hallgato.hallgatoNK }}</p>
+          <p>Email: {{ hallgato.hallgatoEMAIL }}</p>
         </div>
+        <p v-if="hibaUzenet" style="color: red">{{ hibaUzenet }}</p>
+
+        <!-- Fájl feltöltés -->
+        <h2>Fájl feltöltése</h2>
+        <input type="file" @change="handleFileUpload" />
+        <select v-model="selectedType">
+          <option value="1">Szakdolgozat</option>
+          <option value="2">Bírálat</option>
+          <option value="3">Egyéb</option>
+        </select>
+        <select v-model="selectedTemaID">
+          <option v-for="tema in temak" :value="tema.temaID" :key="tema.temaID">
+            {{ tema.temaCim }}
+          </option>
+        </select>
+        <button @click="uploadFile">Feltöltés</button>
+        <p>{{ uploadMessage }}</p>
+
+        <!-- Feltöltött fájlok -->
+        <h2>Feltöltött dokumentjai</h2>
+        <button @click="loadFiles">Fájlok betöltése</button>
+        <ul>
+          <li v-for="file in files" :key="file.id">
+            {{ file.eredeti_nev }}
+            <button @click="downloadFile(file.eleres)">Letöltés</button>
+          </li>
+        </ul>
       </div>
     </div>
 
     <script>
-      // Engedélyezzük a cookie-k továbbítását minden Axios kérésnél
       axios.defaults.withCredentials = true;
+
       new Vue({
-        el: "#app-IDlekerdezes",
+        el: "#app-auth",
         data() {
           return {
+            auth: false,
+            user: null,
+            hallgatok: [],
+            files: [],
+            nev: "",
+            neptun: "",
+            email: "",
+            uzenet: "",
             keresettID: "",
             hallgato: null,
             hibaUzenet: "",
+            selectedFile: null,
+            selectedType: "1",
+            selectedTemaID: null,
+            temak: [],
+            uploadMessage: "",
           };
         },
         methods: {
+          async checkLoginStatus() {
+            try {
+              const res = await axios.get("http://localhost:3000/api/user");
+              this.user = res.data;
+              this.auth = true;
+            } catch (err) {
+              this.auth = false;
+            }
+          },
+          login() {
+            const width = 450;
+            const height = 500;
+            const left = (window.screen.width - width) / 2;
+            const top = (window.screen.height - height) / 2 - 100;
+            window.open(
+              "login.html",
+              "Bejelentkezés",
+              `width=${width},height=${height},left=${left},top=${top},resizable=no,scrollbars=no`
+            );
+          },
+          async logout() {
+            try {
+              await axios.post("http://localhost:3000/api/logout", {});
+              this.auth = false;
+              this.user = null;
+            } catch (err) {
+              console.error("Kijelentkezési hiba:", err);
+            }
+          },
+          async kuldes() {
+            try {
+              const res = await fetch("http://localhost:3000/api/hallgato", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  hallgatoNEV: this.nev,
+                  hallgatoNK: this.neptun,
+                  hallgatoEMAIL: this.email,
+                }),
+              });
+              if (!res.ok) throw new Error(`Hiba: ${res.status}`);
+              const data = await res.json();
+              this.uzenet = data.message;
+              this.nev = this.neptun = this.email = "";
+              this.loadHallgatok(); // újratöltjük
+            } catch (err) {
+              console.error(err);
+              this.uzenet = "Hiba történt a hozzáadáskor.";
+            }
+          },
+          async loadHallgatok() {
+            try {
+              const res = await fetch("http://localhost:3000/api/hallgatok");
+              this.hallgatok = await res.json();
+            } catch (err) {
+              console.error("Hallgatók betöltése hiba:", err);
+            }
+          },
           async keresHallgato() {
             try {
               const res = await fetch(
                 `http://localhost:3000/api/hallgatok/${this.keresettID}`
               );
-              if (!res.ok) {
-                throw new Error(`Hiba történt: ${res.status}`);
-              }
+              if (!res.ok) throw new Error(`Hiba: ${res.status}`);
               const data = await res.json();
               if (data.length === 0) {
                 this.hibaUzenet = "Nem található hallgató ezzel az ID-val.";
@@ -109,125 +183,60 @@
               this.hallgato = null;
             }
           },
-        },
-      });
-    </script>
-
-    <script>
-      new Vue({
-        el: "#app-hozzaadas",
-
-        data() {
-          return {
-            nev: "",
-            neptun: "",
-            email: "",
-            uzenet: "",
-          };
-        },
-        methods: {
-          async kuldes() {
+          handleFileUpload(event) {
+            this.selectedFile = event.target.files[0];
+          },
+          async fetchTemak() {
             try {
-              const res = await fetch("http://localhost:3000/api/hallgato", {
+              const res = await fetch("http://localhost:3000/api/temak");
+              this.temak = await res.json();
+            } catch (err) {
+              console.error("Témák betöltése hiba:", err);
+            }
+          },
+          async uploadFile() {
+            if (!this.selectedFile || !this.selectedTemaID) {
+              this.uploadMessage = "Kérlek válassz ki fájlt és témát!";
+              return;
+            }
+            const formData = new FormData();
+            formData.append("file", this.selectedFile);
+            formData.append("tipus", this.selectedType);
+            formData.append("temaID", this.selectedTemaID);
+            //formData.append("feltolto", this.user.rvID);
+            try {
+              const res = await fetch("http://localhost:3000/api/feltoltes", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  hallgatoNEV: this.nev,
-                  hallgatoNK: this.neptun,
-                  hallgatoEMAIL: this.email,
-                }),
+                body: formData,
+                credentials: "include",
               });
-
-              if (!res.ok) {
-                throw new Error(`Helytelen adat (${res.status})`);
-              }
-
+              if (!res.ok) throw new Error(`Feltöltési hiba: ${res.status}`);
               const data = await res.json();
-              this.uzenet = data.message;
-              this.nev = this.neptun = this.email = "";
+              this.uploadMessage = `Sikeresen feltöltve: ${data.fileName}`;
+              this.selectedFile = null;
+              this.loadFiles(); // újratöltjük a listát
             } catch (err) {
-              console.error("Hiba történt:", err);
-              this.uzenet = "Hiba történt: " + err.message;
+              console.error("Fájl feltöltési hiba:", err);
+              this.uploadMessage = "Hiba történt a feltöltéskor.";
             }
           },
-        },
-      });
-
-      document
-        .getElementById("loadDataButton")
-        .addEventListener("click", async () => {
-          try {
-            // API hívás a backendhez a hallgatók lekérdezésére
-            const response = await fetch("http://localhost:3000/api/hallgatok");
-            const data = await response.json();
-
-            // A listát ürítjük a frissítés előtt
-            const listElement = document.getElementById("hallgatoList");
-            listElement.innerHTML = "";
-
-            // Adatok hozzáadása a listához
-            data.forEach((hallgato) => {
-              const listItem = document.createElement("li");
-              listItem.textContent = `${hallgato.hallgatoNEV} - ${hallgato.hallgatoNK} - ${hallgato.hallgatoEMAIL}`;
-              listElement.appendChild(listItem);
-            });
-          } catch (error) {
-            alert("Hiba történt az adatok betöltésekor: " + error.message);
-          }
-        });
-    </script>
-
-    <script>
-      new Vue({
-        el: "#app-auth",
-        data() {
-          return {
-            auth: false, // Alapértelmezett állapot: nincs bejelentkezve
-            user: null, // Bejelentkezett felhasználó adatai
-          };
-        },
-        methods: {
-          async checkLoginStatus() {
+          async loadFiles() {
             try {
-              const res = await axios.get("http://localhost:3000/api/user", {
-                withCredentials: true,
-              });
-              this.user = res.data;
-              this.auth = true; // Bejelentkezett állapot
-            } catch (err) {
-              this.auth = false; // Nincs bejelentkezve
-            }
-          },
-          async login() {
-            const width = 450;
-            const height = 500;
-            const left = (window.screen.width - width) / 2;
-            const top = (window.screen.height - height) / 2 - 100;
-
-            const loginWindow = window.open(
-              "login.html",
-              "Bejelentkezés",
-              `width=${width},height=${height},left=${left},top=${top},resizable=no,scrollbars=no`
-            );
-
-            // Üzenet fogadása a bejelentkezési ablakból
-          },
-          async logout() {
-            try {
-              await axios.post(
-                "http://localhost:3000/api/logout",
-                {},
-                { withCredentials: true }
+              const res = await fetch(
+                "http://localhost:3000/api/feltoltott-fajlok",
+                { method: "GET", credentials: "include" }
               );
-              this.auth = false;
-              this.user = null;
+              this.files = await res.json();
             } catch (err) {
-              console.error("Hiba történt a kijelentkezés során:", err);
+              console.error("Fájlok betöltése hiba:", err);
             }
           },
-
-          async handleLoginSuccess() {
-            await this.checkLoginStatus();
+          async downloadFile(filename) {
+            const url = `http://localhost:3000/api/letoltes/${filename}`;
+            window.open(url, "_blank");
+          },
+          handleLoginSuccess() {
+            this.checkLoginStatus();
           },
           messageListener(event) {
             if (event.data === "loginSuccess") {
@@ -236,99 +245,14 @@
           },
         },
         created() {
-          this.checkLoginStatus(); // Itt nem kell async!
+          this.checkLoginStatus();
+          this.fetchTemak();
           window.addEventListener("message", this.messageListener);
         },
         beforeDestroy() {
           window.removeEventListener("message", this.messageListener);
         },
       });
-    </script>
-
-    <script>
-      new Vue({
-        el: "#app-feltoltes",
-        data() {
-          return {
-            selectedFile: null,
-            selectedType: "1", // Alapértelmezett típus
-            selectedTemaID: null, // Kiválasztott téma ID
-            temak: [], // Témák listája
-            uploadMessage: "",
-          };
-        },
-        methods: {
-          handleFileUpload(event) {
-            this.selectedFile = event.target.files[0];
-          },
-          async fetchTemak() {
-            try {
-              const response = await fetch("http://localhost:3000/api/temak");
-              this.temak = await response.json();
-            } catch (err) {
-              console.error("Hiba történt a témák betöltésekor:", err);
-            }
-          },
-          async uploadFile() {
-            if (!this.selectedFile || !this.selectedTemaID) {
-              this.uploadMessage = "Kérlek válassz ki egy fájlt és egy témát!";
-              return;
-            }
-
-            const formData = new FormData();
-            formData.append("file", this.selectedFile);
-            formData.append("tipus", this.selectedType);
-            formData.append("temaID", this.selectedTemaID);
-
-            try {
-              const res = await fetch("http://localhost:3000/api/feltoltes", {
-                method: "POST",
-                body: formData,
-              });
-
-              if (!res.ok) {
-                throw new Error(
-                  `Hiba történt a fájl feltöltésekor (${res.status})`
-                );
-              }
-
-              const data = await res.json();
-              this.uploadMessage = `A fájl sikeresen feltöltve: ${data.fileName}`;
-            } catch (err) {
-              console.error("Hiba történt:", err);
-              this.uploadMessage = "Hiba történt a fájl feltöltésekor.";
-            }
-          },
-        },
-        async created() {
-          await this.fetchTemak();
-        },
-      });
-    </script>
-
-    <script>
-      document
-        .getElementById("loadFilesButton")
-        .addEventListener("click", async () => {
-          try {
-            const response = await fetch(
-              "http://localhost:3000/api/feltoltott-fajlok"
-            );
-            const files = await response.json();
-
-            const listElement = document.getElementById("fileList");
-            listElement.innerHTML = ""; // Először ürítjük a listát
-
-            // Fájlok hozzáadása a listához
-            files.forEach((file) => {
-              const listItem = document.createElement("li");
-              listItem.textContent = `${file.eredeti_nev} (${file.eleres})`; // Eredeti fájlnév és elérési út
-              listElement.appendChild(listItem);
-            });
-          } catch (error) {
-            alert("Hiba történt a fájlok betöltésekor: " + error.message);
-          }
-        });
     </script>
   </body>
 </html>

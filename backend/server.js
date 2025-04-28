@@ -303,6 +303,11 @@ const upload = multer({ storage: storage });
 
 // Dokumentum feltöltése
 app.post("/api/feltoltes", upload.single("file"), async (req, res) => {
+  const user = req.session.user;
+  if (!user) {
+    return res.status(401).json({ error: "Nem vagy bejelentkezve" });
+  }
+
   const { temaID, tipus } = req.body;
   const file = req.file;
 
@@ -312,12 +317,13 @@ app.post("/api/feltoltes", upload.single("file"), async (req, res) => {
 
   try {
     // Fájlelérési útvonal és eredeti fájlnév mentése az adatbázisba
-    const sql = `INSERT INTO dokumentumok (temaID, eleres, eredeti_nev, tipus) VALUES (?, ?, ?, ?)`;
+    const sql = `INSERT INTO dokumentumok (temaID, eleres, eredeti_nev, tipus, feltolto) VALUES (?, ?, ?, ?, ?)`;
     await pool.execute(sql, [
       temaID || null,
       file.filename,
       file.originalname,
       tipus || 0,
+      user.rvID,
     ]);
     res.json({
       message: "Fájl sikeresen feltöltve!",
@@ -329,13 +335,31 @@ app.post("/api/feltoltes", upload.single("file"), async (req, res) => {
   }
 });
 
-const UPLOADS_DIR = path.join(__dirname, "uploads");
+const UPLOADS_DIR = path.join(__dirname, "uploads"); //ez mondja meg hova tölti fel a fájlokat
+//Fájlok letöltése
+app.get("/api/letoltes/:filename", (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(UPLOADS_DIR, filename);
+
+  res.download(filePath, (err) => {
+    if (err) {
+      console.error("Letöltési hiba:", err);
+      res.status(404).json({ error: "Fájl nem található" });
+    }
+  });
+});
 
 // Fájlok lekérdezése
 app.get("/api/feltoltott-fajlok", async (req, res) => {
+  const user = req.session.user;
+  if (!user) {
+    return res.status(401).json({ error: "Nem vagy bejelentkezve" });
+  }
+
   try {
     const [rows] = await pool.execute(
-      "SELECT dokID, eredeti_nev, eleres FROM dokumentumok"
+      "SELECT dokID, eredeti_nev, eleres FROM dokumentumok WHERE feltolto = ?",
+      [user.rvID]
     );
     res.json(rows);
   } catch (err) {
