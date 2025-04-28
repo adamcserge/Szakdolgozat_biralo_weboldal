@@ -10,30 +10,68 @@
     <link rel="stylesheet" href="style/index.css" />
   </head>
   <body>
-    <h1>Hallgatók adatainak megjelenítése</h1>
-    <button id="loadDataButton">Adatok betöltése</button>
-    <ul id="hallgatoList"></ul>
-
-    <div id="app-hozzaadas">
-      <h2>Hallgató hozzáadása</h2>
-      <input v-model="nev" placeholder="Név" />
-      <input v-model="neptun" placeholder="Neptun kód" />
-      <input v-model="email" placeholder="Email" />
-      <button @click="kuldes">Küldés</button>
-      <p>{{ uzenet }}</p>
-    </div>
-
-    <div id="app-IDlekerdezes">
-      <h2>Hallgató lekérdezése ID alapján</h2>
-      <input v-model="keresettID" type="number" placeholder="Hallgató ID" />
-      <button @click="keresHallgato">Keresés</button>
-      <div v-if="hallgato">
-        <h3>Hallgató adatai:</h3>
-        <p>Név: {{ hallgato.hallgatoNEV }}</p>
-        <p>Neptun kód: {{ hallgato.hallgatoNK }}</p>
-        <p>Email: {{ hallgato.hallgatoEMAIL }}</p>
+    <div id="app-auth">
+      <div v-if="!auth">
+        <p>Üdvözlünk az oldalon, kérem jelentkezzen be</p>
+        <button @click="login">Bejelentkezés</button>
       </div>
-      <p v-if="hibaUzenet" style="color: red">{{ hibaUzenet }}</p>
+      <div v-else>
+        <button @click="logout">Kijelentkezés</button>
+        <p>Üdv, {{ user.rvFelhasznalonev }} ({{ user.rvEmail }})!</p>
+        <h1>Hallgatók adatainak megjelenítése</h1>
+        <button id="loadDataButton">Adatok betöltése</button>
+        <ul id="hallgatoList"></ul>
+
+        <div id="app-hozzaadas">
+          <h2>Hallgató hozzáadása</h2>
+          <input v-model="nev" placeholder="Név" />
+          <input v-model="neptun" placeholder="Neptun kód" />
+          <input v-model="email" placeholder="Email" />
+          <button @click="kuldes">Küldés</button>
+          <p>{{ uzenet }}</p>
+        </div>
+
+        <div id="app-IDlekerdezes">
+          <h2>Hallgató lekérdezése ID alapján</h2>
+          <input v-model="keresettID" type="number" placeholder="Hallgató ID" />
+          <button @click="keresHallgato">Keresés</button>
+          <div v-if="hallgato">
+            <h3>Hallgató adatai:</h3>
+            <p>Név: {{ hallgato.hallgatoNEV }}</p>
+            <p>Neptun kód: {{ hallgato.hallgatoNK }}</p>
+            <p>Email: {{ hallgato.hallgatoEMAIL }}</p>
+          </div>
+          <p v-if="hibaUzenet" style="color: red">{{ hibaUzenet }}</p>
+        </div>
+
+        <div id="app-feltoltes">
+          <h2>Fájl feltöltése</h2>
+          <input type="file" @change="handleFileUpload" />
+          <select v-model="selectedType">
+            <option value="1">Szakdolgozat</option>
+            <option value="2">Bírálat</option>
+            <option value="3">Egyéb</option>
+          </select>
+          <select v-model="selectedTemaID">
+            <option
+              v-for="tema in temak"
+              :key="tema.temaID"
+              :value="tema.temaID"
+            >
+              {{ tema.temaCim }}
+            </option>
+          </select>
+          <button @click="uploadFile">Feltöltés</button>
+          <p>{{ uploadMessage }}</p>
+        </div>
+
+        <div id="app-file-list">
+          <h2>Feltöltött fájlok</h2>
+          <button id="loadFilesButton">Fájlok betöltése</button>
+          <ul id="fileList"></ul>
+          <!-- Itt fog megjelenni a fájlok listája -->
+        </div>
+      </div>
     </div>
 
     <script>
@@ -139,170 +177,74 @@
         });
     </script>
 
-    <!-- <div id="app-auth">
-      // Bejelentkezés
-      <div v-if="!user">
-        <h2>Bejelentkezés</h2>
-        <input v-model="email" placeholder="email" />
-        <input v-model="password" type="password" placeholder="password" />
-        <button @click="login">Bejelentkezés</button>
-        <p>{{ message }}</p>
-      </div>
-      // Kijelentkezés
-      <div v-else>
-        <button @click="logout">Kijelentkezés</button>
-        <p>{{ message }}</p>
-        <h2>Üdvözlünk {{ user.rvFelhasznalonev }}!</h2>
-        <p><strong>Email:</strong> {{ user.rvEmail }}</p>
-        <p><strong>Felhasználónév:</strong> {{ user.rvFelhasznalonev }}</p>
-      </div>
-    </div>
-
     <script>
       new Vue({
         el: "#app-auth",
         data() {
           return {
-            email: "",
-            password: "",
-            message: "",
-            user: null,
+            auth: false, // Alapértelmezett állapot: nincs bejelentkezve
+            user: null, // Bejelentkezett felhasználó adatai
           };
         },
         methods: {
-          async login() {
+          async checkLoginStatus() {
             try {
-              const res = await axios.post("http://localhost:3000/api/login", {
-                email: this.email,
-                password: this.password,
+              const res = await axios.get("http://localhost:3000/api/user", {
+                withCredentials: true,
               });
-              this.message = res.data.message || "Sikeres bejelentkezés!";
-
-              const userRes = await axios.get("http://localhost:3000/api/user");
-              this.user = userRes.data;
+              this.user = res.data;
+              this.auth = true; // Bejelentkezett állapot
             } catch (err) {
-              console.error(err);
-              this.message =
-                err.response?.data || "Hiba történt a bejelentkezés során.";
+              this.auth = false; // Nincs bejelentkezve
             }
+          },
+          async login() {
+            const width = 450;
+            const height = 500;
+            const left = (window.screen.width - width) / 2;
+            const top = (window.screen.height - height) / 2 - 100;
+
+            const loginWindow = window.open(
+              "login.html",
+              "Bejelentkezés",
+              `width=${width},height=${height},left=${left},top=${top},resizable=no,scrollbars=no`
+            );
+
+            // Üzenet fogadása a bejelentkezési ablakból
           },
           async logout() {
             try {
-              const res = await axios.post("http://localhost:3000/api/logout");
-              this.message = res.data || "Sikeresen kiléptél!";
+              await axios.post(
+                "http://localhost:3000/api/logout",
+                {},
+                { withCredentials: true }
+              );
+              this.auth = false;
               this.user = null;
             } catch (err) {
-              console.error(err);
-              this.message =
-                err.response?.data?.error ||
-                "Hiba történt a kijelentkezés során.";
+              console.error("Hiba történt a kijelentkezés során:", err);
+            }
+          },
+
+          async handleLoginSuccess() {
+            await this.checkLoginStatus();
+          },
+          messageListener(event) {
+            if (event.data === "loginSuccess") {
+              this.handleLoginSuccess();
             }
           },
         },
-        async created() {
-          try {
-            const res = await axios.get("http://localhost:3000/api/user");
-            this.user = res.data;
-          } catch (err) {
-            console.log("Nem vagy bejelentkezve.");
-          }
+        created() {
+          this.checkLoginStatus(); // Itt nem kell async!
+          window.addEventListener("message", this.messageListener);
+        },
+        beforeDestroy() {
+          window.removeEventListener("message", this.messageListener);
         },
       });
-    </script>-->
-    <button id="loginButton">Bejelentkezés</button>
-    <button id="logoutButton" style="display: none">Kijelentkezés</button>
-    <p id="welcomeMessage"></p>
-
-    <script>
-      let loginWindow = null;
-
-      document.getElementById("loginButton").addEventListener("click", () => {
-        const width = 450;
-        const height = 500;
-        const left = (window.screen.width - width) / 2;
-        const top = (window.screen.height - height) / 2 - 100;
-
-        loginWindow = window.open(
-          "login.html",
-          "Bejelentkezés",
-          `width=${width},height=${height},left=${left},top=${top},resizable=no,scrollbars=no`
-        );
-      });
-      window.addEventListener("message", (event) => {
-        if (event.data === "loginSuccess") {
-          // bezárjuk az ablakot
-          if (loginWindow) loginWindow.close();
-
-          // újra lekérjük a bejelentkezett felhasználót
-          axios
-            .get("http://localhost:3000/api/user", { withCredentials: true })
-            .then((res) => {
-              const user = res.data;
-              document.getElementById(
-                "welcomeMessage"
-              ).innerText = `Üdv, ${user.rvFelhasznalonev} (${user.rvEmail})!`;
-              document.getElementById("loginButton").style.display = "none";
-              document.getElementById("logoutButton").style.display =
-                "inline-block";
-            })
-            .catch(() => {
-              alert("Nem sikerült lekérdezni a felhasználót.");
-            });
-        }
-      });
-
-      document
-        .getElementById("logoutButton")
-        .addEventListener("click", async () => {
-          try {
-            await axios.post(
-              "http://localhost:3000/api/logout",
-              {},
-              { withCredentials: true }
-            );
-            document.getElementById("welcomeMessage").innerText = "";
-            document.getElementById("loginButton").style.display =
-              "inline-block";
-            document.getElementById("logoutButton").style.display = "none";
-          } catch (err) {
-            alert("Hiba történt a kijelentkezés során.");
-          }
-        });
-
-      // oldal betöltéskor ellenőrizzük, hogy be van-e jelentkezve
-      window.addEventListener("DOMContentLoaded", () => {
-        axios
-          .get("http://localhost:3000/api/user", { withCredentials: true })
-          .then((res) => {
-            const user = res.data;
-            document.getElementById(
-              "welcomeMessage"
-            ).innerText = `Üdv, ${user.rvFelhasznalonev} (${user.rvEmail})!`;
-            document.getElementById("loginButton").style.display = "none";
-            document.getElementById("logoutButton").style.display =
-              "inline-block";
-          })
-          .catch(() => {
-            // nincs bejelentkezve
-          });
-      });
     </script>
-    <div id="app-feltoltes">
-      <h2>Fájl feltöltése</h2>
-      <input type="file" @change="handleFileUpload" />
-      <select v-model="selectedType">
-        <option value="1">Szakdolgozat</option>
-        <option value="2">Bírálat</option>
-        <option value="3">Egyéb</option>
-      </select>
-      <select v-model="selectedTemaID">
-        <option v-for="tema in temak" :key="tema.temaID" :value="tema.temaID">
-          {{ tema.temaCim }}
-        </option>
-      </select>
-      <button @click="uploadFile">Feltöltés</button>
-      <p>{{ uploadMessage }}</p>
-    </div>
+
     <script>
       new Vue({
         el: "#app-feltoltes",
@@ -363,12 +305,7 @@
         },
       });
     </script>
-    <div id="app-file-list">
-      <h2>Feltöltött fájlok</h2>
-      <button id="loadFilesButton">Fájlok betöltése</button>
-      <ul id="fileList"></ul>
-      <!-- Itt fog megjelenni a fájlok listája -->
-    </div>
+
     <script>
       document
         .getElementById("loadFilesButton")
@@ -395,4 +332,3 @@
     </script>
   </body>
 </html>
-```

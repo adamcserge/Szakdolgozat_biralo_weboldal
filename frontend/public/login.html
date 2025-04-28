@@ -15,11 +15,11 @@
         <input v-model="password" type="password" placeholder="Jelszó" />
         <button @click="login">Bejelentkezés</button>
         <p>{{ message }}</p>
-      </div>
 
-      <div class="register-link">
-        Még nincs fiókod?
-        <span id="registerLink">Regisztrálj</span>
+        <div class="register-link">
+          Még nincs fiókod?
+          <span id="registerLink" @click="openRegister">Regisztrálj</span>
+        </div>
       </div>
     </div>
 
@@ -31,6 +31,7 @@
             email: "",
             password: "",
             message: "",
+            auth: false,
           };
         },
         methods: {
@@ -46,29 +47,29 @@
               );
 
               this.message = "Sikeres bejelentkezés!";
+              this.auth = true;
               // Üzenet visszaküldése a főablaknak
               window.opener.postMessage("loginSuccess", "*");
+
+              window.close();
             } catch (err) {
               console.error(err);
               this.message = "Hibás email vagy jelszó.";
             }
           },
+          //regisztrációs gomb
+          openRegister() {
+            const width = 450;
+            const height = 500;
+            const left = (window.screen.width - width) / 2;
+            const top = (window.screen.height - height) / 2 - 100;
+            const registerWindow = window.open(
+              "register.html",
+              "Regisztráció",
+              `width=${width},height=${height},left=${left},top=${top},resizable=no,scrollbars=no`
+            );
+          },
         },
-      });
-    </script>
-
-    <script>
-      document.getElementById("registerLink").addEventListener("click", () => {
-        const width = 450;
-        const height = 500;
-        const left = (window.screen.width - width) / 2;
-        const top = (window.screen.height - height) / 2 - 100;
-
-        loginWindow = window.open(
-          "register.html",
-          "Regisztráció",
-          `width=${width},height=${height},left=${left},top=${top},resizable=no,scrollbars=no`
-        );
       });
     </script>
   </body>
