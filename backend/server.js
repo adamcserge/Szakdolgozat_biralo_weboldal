@@ -70,6 +70,8 @@ app.use(
   })
 );
 
+//app.use(cors());
+
 app.use("/uploads", express.static("uploads"));
 
 db.connect((err) => {
