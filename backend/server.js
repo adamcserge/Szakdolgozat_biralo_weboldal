@@ -435,6 +435,33 @@ app.get("/api/temak", async (req, res) => {
     res.status(500).json({ error: "Nem sikerült a témák lekérdezése." });
   }
 });
+//téma feltöltése
+app.post("/api/tema", async (req, res) => {
+  const user = req.session.user;
+  if (!user) {
+    return res.status(401).json({ error: "Nem vagy bejelentkezve" });
+  }
+
+  const { temaCim, temacsoport, hallgatoID, szervezetID } = req.body;
+
+  try {
+    const [result] = await pool.execute(
+      `INSERT INTO tema (temaCim, temacsoport, hallgatoID, konzulensID, szervezetID, biralva)
+       VALUES (?, ?, ?, ?, ?, 0)`,
+      [
+        temaCim,
+        temacsoport || null,
+        hallgatoID || null,
+        user.rvID,
+        szervezetID || null,
+      ]
+    );
+    res.json({ message: "Téma sikeresen feltöltve", temaID: result.insertId });
+  } catch (error) {
+    console.error("Téma feltöltési hiba:", error);
+    res.status(500).json({ error: "Hiba történt a téma mentésekor" });
+  }
+});
 
 // Indítsuk el a szervert
 const PORT = process.env.PORT || 3000;

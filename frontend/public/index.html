@@ -12,7 +12,7 @@
   <body>
     <div id="app-auth">
       <div v-if="!auth">
-        <p>Üdvözlünk az oldalon, kérlek jelentkezz be:</p>
+        <p>Üdvözlöm az oldalon, kérlek jelentkezz be:</p>
         <button @click="login">Bejelentkezés</button>
       </div>
 
@@ -54,10 +54,12 @@
         <!-- Fájl feltöltés -->
         <h2>Fájl feltöltése</h2>
         <input type="file" @change="handleFileUpload" />
-        <select v-model="selectedType">
+        <select v-model="selectedType" placeholder="Dokumentum típusa">
           <option value="1">Szakdolgozat</option>
-          <option value="2">Bírálat</option>
-          <option value="3">Egyéb</option>
+          <option value="2">Témakiíró lap</option>
+          <option value="3">Melléklet</option>
+          <option value="4">Bírálat</option>
+          <option value="5">Egyéb</option>
         </select>
         <select v-model="selectedTemaID">
           <option v-for="tema in temak" :value="tema.temaID" :key="tema.temaID">
@@ -77,9 +79,32 @@
             <button @click="torolDokumentum(file.dokID)">Törlés</button>
           </li>
         </ul>
+
+        <!-- Téma feltöltése -->
+        <h2>Új téma feltöltése</h2>
+        <form @submit.prevent="submitTema">
+          <input v-model="ujTema.temaCim" placeholder="Téma címe" required />
+          <input
+            v-model="ujTema.temacsoport"
+            type="number"
+            placeholder="Témacsoport"
+          />
+          <select v-model="ujTema.hallgatoID" required>
+            <option disabled value="">Válassz hallgatót</option>
+            <option v-for="hallgato in hallgatok" :value="hallgato.hallgatoID">
+              {{ hallgato.hallgatoNEV }} ({{ hallgato.hallgatoNK }})
+            </option>
+          </select>
+          <input
+            v-model="ujTema.szervezetNEV"
+            type="number"
+            placeholder="Szervezet"
+          />
+          <button type="submit">Téma beküldése</button>
+        </form>
+        <p v-if="uzenet">{{ uzenet }}</p>
       </div>
     </div>
-
     <script>
       axios.defaults.withCredentials = true;
 
@@ -103,6 +128,13 @@
             selectedTemaID: null,
             temak: [],
             uploadMessage: "",
+            ujTema: {
+              temaCim: "",
+              temacsoport: "",
+              hallgatoID: "",
+              szervezetID: "",
+            },
+            temaUzenet: "",
           };
         },
         methods: {
@@ -261,12 +293,39 @@
               this.handleLoginSuccess();
             }
           },
+          async submitTema() {
+            try {
+              const res = await fetch("http://localhost:3000/api/tema", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify(this.ujTema),
+              });
+              if (!res.ok) throw new Error("Téma mentése nem sikerült");
+              const data = await res.json();
+              this.temaUzenet = `Sikeresen mentve, ID: ${data.temaID}`;
+              this.ujTema = {
+                temaCim: "",
+                temacsoport: "",
+                hallgatoID: "",
+                szervezetID: "",
+              };
+              this.fetchTemak(); // témák frissítése
+            } catch (err) {
+              console.error("Téma mentési hiba:", err);
+              this.temaUzenet = "Hiba történt a mentés során.";
+            }
+          },
         },
         created() {
           this.checkLoginStatus();
           this.fetchTemak();
+          this.loadHallgatok();
           window.addEventListener("message", this.messageListener);
         },
+
         beforeDestroy() {
           window.removeEventListener("message", this.messageListener);
         },
