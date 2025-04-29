@@ -331,6 +331,17 @@ app.post("/api/feltoltes", upload.single("file"), async (req, res) => {
     });
   } catch (error) {
     console.error("Feltöltési hiba:", error);
+
+    //Fájl törlése, ha DB mentés meghiúsult
+    const filePath = path.join(__dirname, "uploads", file.filename);
+    fs.unlink(filePath, (unlinkErr) => {
+      if (unlinkErr) {
+        console.error("Nem sikerült törölni a fájlt:", unlinkErr);
+      } else {
+        console.log("Törölt fájl adatbázishiba miatt:", file.filename);
+      }
+    });
+
     res.status(500).json({ error: "Hiba történt a fájl mentésekor" });
   }
 });
@@ -365,6 +376,52 @@ app.get("/api/feltoltott-fajlok", async (req, res) => {
   } catch (err) {
     console.error("Hiba a fájlok lekérdezésekor:", err);
     res.status(500).json({ error: "Nem sikerült a fájlok listázása." });
+  }
+});
+
+//dokumentumok törlése
+app.delete("/api/dokumentum/:id", async (req, res) => {
+  const user = req.session.user;
+  if (!user) {
+    return res.status(401).json({ error: "Nem vagy bejelentkezve" });
+  }
+
+  const dokumentumID = req.params.id;
+
+  try {
+    // Lekérjük a fájl nevét az ID alapján
+    const [rows] = await pool.execute(
+      "SELECT eleres FROM dokumentumok WHERE dokID = ? AND feltolto = ?",
+      [dokumentumID, user.rvID]
+    );
+
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "A dokumentum nem található vagy nem a tiéd" });
+    }
+
+    const fileName = rows[0].eleres;
+
+    // Töröljük az adatbázisból
+    await pool.execute("DELETE FROM dokumentumok WHERE dokID = ?", [
+      dokumentumID,
+    ]);
+
+    // Töröljük a fájlt a fájlrendszerből
+    const filePath = path.join(__dirname, "uploads", fileName);
+    fs.unlink(filePath, (err) => {
+      if (err) {
+        console.error("Fájl törlési hiba:", err);
+      } else {
+        console.log("Fájl törölve:", fileName);
+      }
+    });
+
+    res.json({ message: "Dokumentum sikeresen törölve" });
+  } catch (error) {
+    console.error("Törlés hiba:", error);
+    res.status(500).json({ error: "Hiba történt a dokumentum törlésekor" });
   }
 });
 

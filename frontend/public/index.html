@@ -71,9 +71,10 @@
         <h2>Feltöltött dokumentjai</h2>
         <button @click="loadFiles">Fájlok betöltése</button>
         <ul>
-          <li v-for="file in files" :key="file.id">
+          <li v-for="file in files" :key="file.dokID">
             {{ file.eredeti_nev }}
             <button @click="downloadFile(file.eleres)">Letöltés</button>
+            <button @click="torolDokumentum(file.dokID)">Törlés</button>
           </li>
         </ul>
       </div>
@@ -218,6 +219,23 @@
             } catch (err) {
               console.error("Fájl feltöltési hiba:", err);
               this.uploadMessage = "Hiba történt a feltöltéskor.";
+            }
+          },
+          //fájlok törlése
+          async torolDokumentum(id) {
+            try {
+              await fetch(`http://localhost:3000/api/dokumentum/${id}`, {
+                method: "DELETE",
+                credentials: "include", // fontos, hogy elküldje a session cookiet
+              });
+              this.loadFiles(); // újratölti a listát
+            } catch (err) {
+              console.error("Törlési hiba:", err);
+            }
+          },
+          confirmDelete(id) {
+            if (confirm("Biztosan törölni szeretnéd a fájlt?")) {
+              this.torolDokumentum(id);
             }
           },
           async loadFiles() {
