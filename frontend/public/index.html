@@ -84,22 +84,42 @@
         <h2>Új téma feltöltése</h2>
         <form @submit.prevent="submitTema">
           <input v-model="ujTema.temaCim" placeholder="Téma címe" required />
-          <input
-            v-model="ujTema.temacsoport"
-            type="number"
-            placeholder="Témacsoport"
-          />
+
+          <select v-model="ujTema.kapcsolodoTemaID">
+            <option disabled value="">Kapcsolódó téma (nem kötelező)</option>
+            <option
+              v-for="tema in temak"
+              :value="tema.temaID"
+              :key="tema.temaID"
+            >
+              {{ tema.temaCim }}
+            </option>
+          </select>
           <select v-model="ujTema.hallgatoID" required>
             <option disabled value="">Válassz hallgatót</option>
             <option v-for="hallgato in hallgatok" :value="hallgato.hallgatoID">
               {{ hallgato.hallgatoNEV }} ({{ hallgato.hallgatoNK }})
             </option>
           </select>
-          <input
-            v-model="ujTema.szervezetNEV"
-            type="number"
-            placeholder="Szervezet"
-          />
+          <div>
+            <h3 @click="toggleSzervezetValasztas" style="cursor: pointer">
+              Szervezet választása
+              <span>{{ isSzervezetValasztasOpen ? '-' : '+' }}</span>
+            </h3>
+            <ul v-if="isSzervezetValasztasOpen">
+              <tree-item
+                v-for="szervezet in szervezetek"
+                :key="szervezet.szervezetID"
+                :item="szervezet"
+                :selected-id="ujTema.szervezetID"
+                @select="ujTema.szervezetID = $event"
+              ></tree-item>
+            </ul>
+            <p>
+              Kiválasztott szervezet: {{ getSzervezetNevById(ujTema.szervezetID)
+              }}
+            </p>
+          </div>
           <button type="submit">Téma beküldése</button>
         </form>
         <p v-if="uzenet">{{ uzenet }}</p>
@@ -107,6 +127,47 @@
     </div>
     <script>
       axios.defaults.withCredentials = true;
+      Vue.component("tree-item", {
+        props: ["item", "selectedId"],
+        data() {
+          return {
+            isOpen: false, // A kibontás állapota
+          };
+        },
+        computed: {
+          hasChildren() {
+            return this.item.children && this.item.children.length > 0;
+          },
+          isSelected() {
+            return this.item.szervezetID === this.selectedId;
+          },
+        },
+        methods: {
+          toggle() {
+            this.isOpen = !this.isOpen;
+          },
+          select() {
+            this.$emit("select", this.item.szervezetID);
+          },
+        },
+        template: `
+    <li :class="{ selected: isSelected }">
+      <div @click="toggle" style="cursor: pointer;">
+        <span v-if="hasChildren">{{ isOpen ? '-' : '+' }}</span>
+        <span @click.stop="select">{{ item.szervezetNEV }}</span>
+      </div>
+      <ul v-if="isOpen && hasChildren">
+        <tree-item
+          v-for="child in item.children"
+          :key="child.szervezetID"
+          :item="child"
+          :selected-id="selectedId"
+          @select="$emit('select', $event)"
+        ></tree-item>
+      </ul>
+    </li>
+  `,
+      });
 
       new Vue({
         el: "#app-auth",
@@ -126,15 +187,17 @@
             selectedFile: null,
             selectedType: "1",
             selectedTemaID: null,
-            temak: [],
+            temak: [], // Témák listája
             uploadMessage: "",
             ujTema: {
               temaCim: "",
-              temacsoport: "",
+              kapcsolodoTemaID: "", // Kapcsolódó téma ID
               hallgatoID: "",
               szervezetID: "",
             },
             temaUzenet: "",
+            szervezetek: [], // Szervezetek hierarchikus listája
+            isSzervezetValasztasOpen: false, // Szervezetválasztó nyitott állapota
           };
         },
         methods: {
@@ -308,21 +371,68 @@
               this.temaUzenet = `Sikeresen mentve, ID: ${data.temaID}`;
               this.ujTema = {
                 temaCim: "",
-                temacsoport: "",
+                kapcsolodoTemaID: "", // Kapcsolódó téma ID
                 hallgatoID: "",
                 szervezetID: "",
               };
+              this.isSzervezetValasztasOpen = false; // bezárja a szervezet választót
               this.fetchTemak(); // témák frissítése
             } catch (err) {
               console.error("Téma mentési hiba:", err);
               this.temaUzenet = "Hiba történt a mentés során.";
             }
           },
+          async fetchSzervezetek() {
+            try {
+              const response = await axios.get(
+                "http://localhost:3000/api/szervezetek"
+              );
+              const flatData = response.data;
+
+              // Hierarchikus struktúra létrehozása
+              const map = {};
+              flatData.forEach((item) => {
+                map[item.szervezetID] = { ...item, children: [] };
+              });
+
+              const tree = [];
+              flatData.forEach((item) => {
+                if (item.felettesID) {
+                  map[item.felettesID].children.push(map[item.szervezetID]);
+                } else {
+                  tree.push(map[item.szervezetID]);
+                }
+              });
+
+              this.szervezetek = tree;
+            } catch (error) {
+              console.error("Hiba a szervezetek lekérésekor", error);
+            }
+          },
+          toggleSzervezetValasztas() {
+            this.isSzervezetValasztasOpen = !this.isSzervezetValasztasOpen;
+          },
+          getSzervezetNevById(id) {
+            const findSzervezet = (szervezetek, id) => {
+              for (const szervezet of szervezetek) {
+                if (szervezet.szervezetID === id) {
+                  return szervezet.szervezetNEV;
+                }
+                if (szervezet.children && szervezet.children.length > 0) {
+                  const nev = findSzervezet(szervezet.children, id);
+                  if (nev) return nev;
+                }
+              }
+              return null;
+            };
+            return findSzervezet(this.szervezetek, id) || "Nincs kiválasztva";
+          },
         },
         created() {
           this.checkLoginStatus();
           this.fetchTemak();
           this.loadHallgatok();
+          this.fetchSzervezetek();
           window.addEventListener("message", this.messageListener);
         },
 

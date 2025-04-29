@@ -32,7 +32,9 @@
             @select="selectedSzervezet = $event"
           ></tree-item>
         </ul>
-        <p>Kiválasztott szervezet: {{ selectedSzervezet }}</p>
+        <p>
+          Kiválasztott szervezet: {{ getSzervezetNevById(selectedSzervezet) }}
+        </p>
       </div>
 
       <!-- Végzettség választás -->
@@ -73,22 +75,22 @@
           },
         },
         template: `
-          <li :class="{ selected: isSelected }">
-            <div @click="toggle" style="cursor: pointer;">
-              <span v-if="hasChildren">{{ isOpen ? '-' : '+' }}</span>
-              <span @click.stop="select">{{ item.szervezetNEV }}</span>
-            </div>
-            <ul v-if="isOpen && hasChildren">
-              <tree-item
-                v-for="child in item.children"
-                :key="child.szervezetID"
-                :item="child"
-                :selected-id="selectedId"
-                @select="$emit('select', $event)"
-              ></tree-item>
-            </ul>
-          </li>
-        `,
+                <li :class="{ selected: isSelected }">
+                  <div @click="toggle" style="cursor: pointer;">
+                    <span v-if="hasChildren">{{ isOpen ? '-' : '+' }}</span>
+                    <span @click.stop="select">{{ item.szervezetNEV }}</span>
+                  </div>
+                  <ul v-if="isOpen && hasChildren">
+                    <tree-item
+                      v-for="child in item.children"
+                      :key="child.szervezetID"
+                      :item="child"
+                      :selected-id="selectedId"
+                      @select="$emit('select', $event)"
+                    ></tree-item>
+                  </ul>
+                </li>
+              `,
       });
 
       new Vue({
@@ -141,6 +143,21 @@
           // Szervezet választás kibontás/összecsukás
           toggleSzervezetValasztas() {
             this.isSzervezetValasztasOpen = !this.isSzervezetValasztasOpen;
+          },
+          getSzervezetNevById(id) {
+            const findSzervezet = (szervezetek, id) => {
+              for (const szervezet of szervezetek) {
+                if (szervezet.szervezetID === id) {
+                  return szervezet.szervezetNEV;
+                }
+                if (szervezet.children && szervezet.children.length > 0) {
+                  const nev = findSzervezet(szervezet.children, id);
+                  if (nev) return nev;
+                }
+              }
+              return null;
+            };
+            return findSzervezet(this.szervezetek, id) || "Nincs kiválasztva";
           },
           // Regisztrációs adatküldés
           async register() {
