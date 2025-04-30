@@ -20,26 +20,26 @@
         <button @click="logout">Kijelentkezés</button>
         <p>Üdv, {{ user.rvFelhasznalonev }} ({{ user.rvEmail }})!</p>
 
-        <h1>Hallgatók kezelése</h1>
+        <!--<h1>Hallgatók kezelése</h1>
 
-        <!-- Hallgatók listázása -->
+         Hallgatók listázása 
         <button @click="loadHallgatok">Hallgatók betöltése</button>
         <ul>
           <li v-for="hallgato in hallgatok" :key="hallgato.hallgatoID">
             {{ hallgato.hallgatoNEV }} - {{ hallgato.hallgatoNK }} - {{
             hallgato.hallgatoEMAIL }}
           </li>
-        </ul>
+        </ul>-->
 
-        <!-- Hallgató hozzáadása -->
+        <!-- Hallgató hozzáadása 
         <h2>Új hallgató hozzáadása</h2>
         <input v-model="nev" placeholder="Név" />
         <input v-model="neptun" placeholder="Neptun kód" />
         <input v-model="email" placeholder="Email" />
         <button @click="kuldes">Küldés</button>
-        <p>{{ uzenet }}</p>
+        <p>{{ uzenet }}</p>-->
 
-        <!-- Hallgató lekérdezése ID alapján -->
+        <!-- Hallgató lekérdezése ID alapján 
         <h2>Hallgató keresése ID alapján</h2>
         <input v-model="keresettID" type="number" placeholder="Hallgató ID" />
         <button @click="keresHallgato">Keresés</button>
@@ -49,8 +49,18 @@
           <p>Neptun kód: {{ hallgato.hallgatoNK }}</p>
           <p>Email: {{ hallgato.hallgatoEMAIL }}</p>
         </div>
-        <p v-if="hibaUzenet" style="color: red">{{ hibaUzenet }}</p>
-
+        <p v-if="hibaUzenet" style="color: red">{{ hibaUzenet }}</p>-->
+        <template>
+          <div>
+            <h2>Kapcsolatos témái</h2>
+            <ul>
+              <li v-for="tema in temak" :key="tema.temaID">
+                {{ tema.temaCim }}
+                <!-- További részletek megjelenítése, pl. bíráló státusza -->
+              </li>
+            </ul>
+          </div>
+        </template>
         <!-- Fájl feltöltés -->
         <h2>Fájl feltöltése</h2>
         <input type="file" @change="handleFileUpload" />
@@ -95,12 +105,28 @@
               {{ tema.temaCim }}
             </option>
           </select>
+
           <select v-model="ujTema.hallgatoID" required>
             <option disabled value="">Válassz hallgatót</option>
             <option v-for="hallgato in hallgatok" :value="hallgato.hallgatoID">
               {{ hallgato.hallgatoNEV }} ({{ hallgato.hallgatoNK }})
             </option>
           </select>
+
+          <!-- További konzulens kiválasztása -->
+          <select v-model="ujTema.extraKonzulensID">
+            <option disabled value="">
+              Válassz további konzulenst (nem kötelező)
+            </option>
+            <option
+              v-for="resztvevo in resztvevok"
+              :value="resztvevo.rvID"
+              :key="resztvevo.rvID"
+            >
+              {{ resztvevo.rvNEV }} ({{ resztvevo.rvEmail }})
+            </option>
+          </select>
+
           <div>
             <h3 @click="toggleSzervezetValasztas" style="cursor: pointer">
               Szervezet választása
@@ -194,10 +220,14 @@
               kapcsolodoTemaID: "", // Kapcsolódó téma ID
               hallgatoID: "",
               szervezetID: "",
+              extraKonzulensID: "", // További konzulens ID
             },
             temaUzenet: "",
             szervezetek: [], // Szervezetek hierarchikus listája
             isSzervezetValasztasOpen: false, // Szervezetválasztó nyitott állapota
+            konzulensTemak: [],
+            biraloTemak: [],
+            resztvevok: [], // Résztvevők listája
           };
         },
         methods: {
@@ -374,9 +404,10 @@
                 kapcsolodoTemaID: "", // Kapcsolódó téma ID
                 hallgatoID: "",
                 szervezetID: "",
+                extraKonzulensID: "", // További konzulens ID
               };
-              this.isSzervezetValasztasOpen = false; // bezárja a szervezet választót
-              this.fetchTemak(); // témák frissítése
+              this.isSzervezetValasztasOpen = false; // Bezárja a szervezetválasztót
+              this.fetchTemak(); // Témák frissítése
             } catch (err) {
               console.error("Téma mentési hiba:", err);
               this.temaUzenet = "Hiba történt a mentés során.";
@@ -409,6 +440,15 @@
               console.error("Hiba a szervezetek lekérésekor", error);
             }
           },
+
+          async loadResztvevok() {
+            try {
+              const res = await fetch("http://localhost:3000/api/resztvevok");
+              this.resztvevok = await res.json();
+            } catch (err) {
+              console.error("Résztvevők betöltése hiba:", err);
+            }
+          },
           toggleSzervezetValasztas() {
             this.isSzervezetValasztasOpen = !this.isSzervezetValasztasOpen;
           },
@@ -433,6 +473,7 @@
           this.fetchTemak();
           this.loadHallgatok();
           this.fetchSzervezetek();
+          this.loadResztvevok(); // Résztvevők betöltése
           window.addEventListener("message", this.messageListener);
         },
 

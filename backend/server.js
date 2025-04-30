@@ -442,9 +442,11 @@ app.post("/api/tema", async (req, res) => {
     return res.status(401).json({ error: "Nem vagy bejelentkezve" });
   }
 
-  const { temaCim, temacsoport, hallgatoID, szervezetID } = req.body;
+  const { temaCim, temacsoport, hallgatoID, szervezetID, extraKonzulensID } =
+    req.body;
 
   try {
+    // Téma mentése
     const [result] = await pool.execute(
       `INSERT INTO tema (temaCim, temacsoport, hallgatoID, konzulensID, szervezetID, biralva)
        VALUES (?, ?, ?, ?, ?, 0)`,
@@ -452,16 +454,94 @@ app.post("/api/tema", async (req, res) => {
         temaCim,
         temacsoport || null,
         hallgatoID || null,
-        user.rvID,
+        user.rvID, // A bejelentkezett felhasználó ID-ja mint konzulensID
         szervezetID || null,
       ]
     );
-    res.json({ message: "Téma sikeresen feltöltve", temaID: result.insertId });
+
+    const temaID = result.insertId;
+
+    // Konzulens táblába beszúrás a bejelentkezett felhasználóval
+    await pool.execute(
+      `INSERT INTO konzulens (temaID, konzulensID) VALUES (?, ?)`,
+      [temaID, user.rvID]
+    );
+
+    // Konzulens táblába beszúrás a további konzulenssel (ha van)
+    if (extraKonzulensID) {
+      await pool.execute(
+        `INSERT INTO konzulens (temaID, konzulensID) VALUES (?, ?)`,
+        [temaID, extraKonzulensID]
+      );
+    }
+
+    res.json({ message: "Téma sikeresen feltöltve", temaID });
   } catch (error) {
     console.error("Téma feltöltési hiba:", error);
     res.status(500).json({ error: "Hiba történt a téma mentésekor" });
   }
 });
+app.get("/api/kapcsolodoTema", (req, res) => {
+  const konzulensID = req.session.userID; // A bejelentkezett felhasználó ID-ja
+
+  const query = "SELECT * FROM tema WHERE konzulensID = ?";
+  db.query(query, [konzulensID], (err, results) => {
+    if (err) {
+      return res.status(500).send({ error: "Database error" });
+    }
+    res.json(results);
+  });
+});
+
+//bíráló felkérése
+app.post("/felkeres-biralora", (req, res) => {
+  const { temaID, biraloID } = req.body;
+
+  const sql = `
+    INSERT INTO biralo (BtemaID, BbiraloID) VALUES (?, ?)
+    ON DUPLICATE KEY UPDATE BbiraloID = VALUES(BbiraloID)
+  `;
+  db.query(sql, [temaID, biraloID], (err) => {
+    if (err) return res.status(500).send("Hiba a bíráló felkérésekor");
+    res.send("Bíráló felkérve");
+  });
+});
+/*
+//bíráló elfogadja vagy sem
+app.post("/biralo-valasz", (req, res) => {
+  const { temaID, biraloID, valasz } = req.body;
+
+  const sql = `UPDATE biralo SET allapot = ? WHERE BtemaID = ? AND BbiraloID = ?`;
+  db.query(sql, [valasz, temaID, biraloID], (err) => {
+    if (err) return res.status(500).send("Hiba a válasz feldolgozásakor");
+    res.send("Válasz mentve");
+  });
+});
+
+//bíralat feltöltése
+app.post("/feltolt-biralat", upload.single("file"), (req, res) => {
+  const { temaID, biraloID } = req.body;
+  const eleres = req.file.path;
+
+  const sql = `INSERT INTO biralat (temaID, biraloID, eleres) VALUES (?, ?, ?)`;
+  db.query(sql, [temaID, biraloID, eleres], (err) => {
+    if (err) return res.status(500).send("Hiba a bírálat mentésekor");
+    res.send("Bírálat feltöltve");
+  });
+});
+
+// Résztvevők lekérdezése
+app.get("/api/resztvevok", async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      "SELECT rvID, rvNEV, rvEmail FROM resztvevok"
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Hiba a résztvevők lekérésekor:", err);
+    res.status(500).json({ error: "Nem sikerült a résztvevők lekérése." });
+  }
+});*/
 
 // Indítsuk el a szervert
 const PORT = process.env.PORT || 3000;
