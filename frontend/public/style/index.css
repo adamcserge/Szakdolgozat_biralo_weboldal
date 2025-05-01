@@ -82,3 +82,25 @@ button:hover {
   top: 60px;
   font-weight: bold;
 }
+
+/* Modal stílusok */
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+}
+
+.modal select,
+.modal button {
+  margin: 10px 0;
+}
+
+.modal button {
+  padding: 5px 10px;
+  cursor: pointer;
+}

@@ -50,23 +50,53 @@
           <p>Email: {{ hallgato.hallgatoEMAIL }}</p>
         </div>
         <p v-if="hibaUzenet" style="color: red">{{ hibaUzenet }}</p>-->
-        <template>
+
+        <!--<template>
           <div>
             <h2>Kapcsolatos témái</h2>
             <ul>
               <li v-for="tema in temak" :key="tema.temaID">
                 {{ tema.temaCim }}
-                <!-- További részletek megjelenítése, pl. bíráló státusza -->
+                 További részletek megjelenítése, pl. bíráló státusza
               </li>
             </ul>
           </div>
+        </template>-->
+        <template>
+          <div v-for="tema in temak" :key="tema.temaID">
+            <p>{{ tema.temaCim }}</p>
+            <button
+              v-if="!tema.biraloID && tema.biralva !== 1"
+              @click="openModal(tema.temaID)"
+            >
+              Bíráló felkérése
+            </button>
+          </div>
+
+          <div v-if="showModal" class="modal">
+            <h3>Válassz bírálót</h3>
+            <select v-model="kivalasztottBiralo">
+              <option disabled value="">Válassz bírálót</option>
+              <option
+                v-for="biralo in biralok"
+                :key="biralo.rvID"
+                :value="biralo.rvID"
+              >
+                {{ biralo.nev }}
+              </option>
+            </select>
+            <button @click="felkeresBiralo">Felkérés küldése</button>
+            <button @click="showModal = false">Mégse</button>
+          </div>
         </template>
+
         <!-- Fájl feltöltés -->
         <h2>Fájl feltöltése</h2>
         <input type="file" @change="handleFileUpload" />
         <select v-model="selectedType" placeholder="Dokumentum típusa">
-          <option value="1">Szakdolgozat</option>
-          <option value="2">Témakiíró lap</option>
+          <option value="1">Témakiíró lap</option>
+          <option value="2">Szakdolgozat</option>
+          <option value="3">Titoktartási nyilatkozat</option>
           <option value="3">Melléklet</option>
           <option value="4">Bírálat</option>
           <option value="5">Egyéb</option>
@@ -149,6 +179,14 @@
           <button type="submit">Téma beküldése</button>
         </form>
         <p v-if="uzenet">{{ uzenet }}</p>
+
+        <!-- Bírálóként hozzárendelt témák -->
+        <h2>Bírálóként hozzárendelt témák</h2>
+        <ul>
+          <li v-for="tema in biraloTemak" :key="tema.temaID">
+            {{ tema.temaCim }}
+          </li>
+        </ul>
       </div>
     </div>
     <script>
@@ -177,22 +215,22 @@
           },
         },
         template: `
-    <li :class="{ selected: isSelected }">
-      <div @click="toggle" style="cursor: pointer;">
-        <span v-if="hasChildren">{{ isOpen ? '-' : '+' }}</span>
-        <span @click.stop="select">{{ item.szervezetNEV }}</span>
-      </div>
-      <ul v-if="isOpen && hasChildren">
-        <tree-item
-          v-for="child in item.children"
-          :key="child.szervezetID"
-          :item="child"
-          :selected-id="selectedId"
-          @select="$emit('select', $event)"
-        ></tree-item>
-      </ul>
-    </li>
-  `,
+        <li :class="{ selected: isSelected }">
+          <div @click="toggle" style="cursor: pointer;">
+            <span v-if="hasChildren">{{ isOpen ? '-' : '+' }}</span>
+            <span @click.stop="select">{{ item.szervezetNEV }}</span>
+          </div>
+          <ul v-if="isOpen && hasChildren">
+            <tree-item
+              v-for="child in item.children"
+              :key="child.szervezetID"
+              :item="child"
+              :selected-id="selectedId"
+              @select="$emit('select', $event)"
+            ></tree-item>
+          </ul>
+        </li>
+      `,
       });
 
       new Vue({
@@ -226,8 +264,12 @@
             szervezetek: [], // Szervezetek hierarchikus listája
             isSzervezetValasztasOpen: false, // Szervezetválasztó nyitott állapota
             konzulensTemak: [],
-            biraloTemak: [],
+            biraloTemak: [], // Bírálóhoz tartozó témák
             resztvevok: [], // Résztvevők listája
+            biralok: [],
+            showModal: false,
+            kivalasztottTemaID: null,
+            kivalasztottBiralo: null,
           };
         },
         methods: {
@@ -316,6 +358,7 @@
             try {
               const res = await fetch("http://localhost:3000/api/temak");
               this.temak = await res.json();
+              console.log("Betöltött témák:", this.temak); // Ellenőrzés
             } catch (err) {
               console.error("Témák betöltése hiba:", err);
             }
@@ -467,13 +510,79 @@
             };
             return findSzervezet(this.szervezetek, id) || "Nincs kiválasztva";
           },
+          openModal(temaID) {
+            console.log("Kiválasztott téma ID:", temaID); // Ellenőrzés
+            this.kivalasztottTemaID = temaID;
+            this.showModal = true; // Modális ablak megnyitása
+            console.log("showModal értéke:", this.showModal); // Ellenőrzés
+            this.fetchBiralok(); // Bírálók lekérése
+          },
+          fetchBiralok() {
+            fetch("http://localhost:3000/api/osszes-biralo", {
+              credentials: "include", // Küldi a session cookie-t
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                this.biralok = data;
+              })
+              .catch((err) => {
+                console.error("Hiba a bírálók lekérésekor:", err);
+              });
+          },
+          async fetchBiraloTemak() {
+            try {
+              const res = await fetch(
+                "http://localhost:3000/api/biralo-temak",
+                {
+                  credentials: "include", // Küldi a session cookie-t
+                }
+              );
+              if (!res.ok) throw new Error("Hiba a bíráló témák lekérésekor.");
+              this.biraloTemak = await res.json();
+            } catch (err) {
+              console.error("Hiba a bíráló témák lekérésekor:", err);
+            }
+          },
+          felkeresBiralo() {
+            if (!this.kivalasztottBiralo) {
+              alert("Kérlek válassz ki egy bírálót!");
+              return;
+            }
+
+            fetch("http://localhost:3000/felkeres-biralot", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                temaID: this.kivalasztottTemaID,
+                biraloID: this.kivalasztottBiralo,
+              }),
+            })
+              .then((res) => {
+                if (!res.ok) {
+                  throw new Error("Hiba történt a bíráló felkérésekor.");
+                }
+                return res.json();
+              })
+              .then((data) => {
+                alert(data.message || "Bíráló sikeresen felkérve!");
+                this.showModal = false; // Modális ablak bezárása
+                this.kivalasztottTemaID = null;
+                this.kivalasztottBiralo = null;
+                fetchTemak(); // Témák újratöltése
+              })
+              .catch((err) => {
+                console.error("Hiba a bíráló felkérésekor:", err);
+                alert("Hiba történt a bíráló felkérésekor.");
+              });
+          },
         },
         created() {
           this.checkLoginStatus();
           this.fetchTemak();
           this.loadHallgatok();
           this.fetchSzervezetek();
-          this.loadResztvevok(); // Résztvevők betöltése
+          this.loadResztvevok();
+          this.fetchBiraloTemak(); // Bíráló témák betöltése
           window.addEventListener("message", this.messageListener);
         },
 
