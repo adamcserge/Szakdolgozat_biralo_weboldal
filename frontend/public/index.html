@@ -63,18 +63,23 @@
           </div>
         </template>-->
         <template>
-          <div v-for="tema in temak" :key="tema.temaID">
-            <p>{{ tema.temaCim }}</p>
-            <button
-              v-if="!tema.biraloID && tema.biralva !== 1"
-              @click="openModal(tema.temaID)"
-            >
-              Bíráló felkérése
-            </button>
+          <div v-for="tema in konzulensTemak" :key="tema.temaID">
+            <ul>
+              <li>
+                {{ tema.temaCim }}
+                <button
+                  v-if="!tema.biraloID && tema.biralva !== 1"
+                  @click="openModal(tema.temaID)"
+                >
+                  Bíráló felkérése
+                </button>
+              </li>
+            </ul>
           </div>
 
           <div v-if="showModal" class="modal">
             <h3>Válassz bírálót</h3>
+            <p>Téma: {{ kivalasztottTemaCim }}</p>
             <select v-model="kivalasztottBiralo">
               <option disabled value="">Válassz bírálót</option>
               <option
@@ -185,6 +190,26 @@
         <ul>
           <li v-for="tema in biraloTemak" :key="tema.temaID">
             {{ tema.temaCim }}
+
+            <button @click="megtekintDokumentum(tema.temaID)">
+              Témakiíró lap megtekintése
+            </button>
+            <div v-if="tema.biralva === 1">
+              <button @click="elfogadFelkeres(tema.temaID)">Elfogadás</button>
+              <button @click="elutasitFelkeres(tema.temaID)">Elutasítás</button>
+            </div>
+
+            <!-- Bírálat feltöltése -->
+            <div v-else-if="tema.biralva === 2">
+              <button @click="feltoltBiralat(tema.temaID)">
+                Bírálat feltöltése
+              </button>
+            </div>
+
+            <!-- Bírálat feltöltve -->
+            <div v-else-if="tema.biralva === 3">
+              <p>Bírálat feltöltve</p>
+            </div>
           </li>
         </ul>
       </div>
@@ -270,6 +295,7 @@
             showModal: false,
             kivalasztottTemaID: null,
             kivalasztottBiralo: null,
+            kivalasztottTemaCim: null, // Téma címének tárolása
           };
         },
         methods: {
@@ -278,8 +304,11 @@
               const res = await axios.get("http://localhost:3000/api/user");
               this.user = res.data;
               this.auth = true;
+              this.refreshData(); // Frissítjük az adatokat bejelentkezés után
             } catch (err) {
               this.auth = false;
+              this.user = null;
+              this.refreshData(); // Töröljük az adatokat kijelentkezés után
             }
           },
           login() {
@@ -287,17 +316,28 @@
             const height = 500;
             const left = (window.screen.width - width) / 2;
             const top = (window.screen.height - height) / 2 - 100;
-            window.open(
+            const loginWindow = window.open(
               "login.html",
               "Bejelentkezés",
               `width=${width},height=${height},left=${left},top=${top},resizable=no,scrollbars=no`
             );
+
+            // Figyeljük, hogy a bejelentkezés sikeres-e
+            const interval = setInterval(() => {
+              if (loginWindow.closed) {
+                clearInterval(interval);
+                this.checkLoginStatus(); // Ellenőrizzük a bejelentkezési állapotot
+                this.refreshData(); // Frissítjük az adatokat
+              }
+            }, 500);
           },
+
           async logout() {
             try {
               await axios.post("http://localhost:3000/api/logout", {});
               this.auth = false;
               this.user = null;
+              this.refreshData(); // Frissítjük az adatokat kijelentkezés után
             } catch (err) {
               console.error("Kijelentkezési hiba:", err);
             }
@@ -427,6 +467,7 @@
           messageListener(event) {
             if (event.data === "loginSuccess") {
               this.handleLoginSuccess();
+              this.refreshData(); // Frissítjük az adatokat bejelentkezés után
             }
           },
           async submitTema() {
@@ -512,13 +553,17 @@
           },
           openModal(temaID) {
             console.log("Kiválasztott téma ID:", temaID); // Ellenőrzés
+            const tema = this.konzulensTemak.find((t) => t.temaID === temaID);
+            if (tema) {
+              this.kivalasztottTemaCim = tema.temaCim; // Téma címének beállítása
+            }
             this.kivalasztottTemaID = temaID;
             this.showModal = true; // Modális ablak megnyitása
             console.log("showModal értéke:", this.showModal); // Ellenőrzés
-            this.fetchBiralok(); // Bírálók lekérése
+            this.fetchBiralok(temaID); // Bírálók lekérése
           },
-          fetchBiralok() {
-            fetch("http://localhost:3000/api/osszes-biralo", {
+          fetchBiralok(temaID) {
+            fetch(`http://localhost:3000/api/osszes-biralo/${temaID}`, {
               credentials: "include", // Küldi a session cookie-t
             })
               .then((res) => res.json())
@@ -539,9 +584,115 @@
               );
               if (!res.ok) throw new Error("Hiba a bíráló témák lekérésekor.");
               this.biraloTemak = await res.json();
+              console.log("Bíráló témák:", this.biraloTemak); // Ellenőrzés
             } catch (err) {
               console.error("Hiba a bíráló témák lekérésekor:", err);
             }
+          },
+          async fetchKonzulensTemak() {
+            try {
+              const res = await fetch(
+                "http://localhost:3000/api/konzulens-temak",
+                {
+                  credentials: "include", // Küldi a session cookie-t
+                }
+              );
+              if (!res.ok)
+                throw new Error("Hiba a konzulens témák lekérésekor.");
+              this.konzulensTemak = await res.json();
+              console.log("Konzulens témák:", this.konzulensTemak); // Ellenőrzés
+            } catch (err) {
+              console.error("Hiba a konzulens témák lekérésekor:", err);
+            }
+          },
+          async megtekintDokumentum(temaID) {
+            try {
+              const res = await fetch(
+                `http://localhost:3000/api/tema-dokumentumok/${temaID}`
+              );
+              if (!res.ok) {
+                throw new Error("Hiba a dokumentumok lekérésekor.");
+              }
+
+              const dokumentumok = await res.json();
+              if (dokumentumok.length > 0) {
+                const eleres = dokumentumok[0].eleres; // Az első dokumentum elérési útvonala
+                window.open(
+                  `http://localhost:3000/uploads/${eleres}`,
+                  "_blank"
+                ); // Dokumentum megnyitása új lapon
+              } else {
+                alert("Ehhez a témához nincs témakiíró dokumentum.");
+              }
+            } catch (err) {
+              console.error("Hiba a dokumentum megtekintésekor:", err);
+              alert("Hiba történt a dokumentum megtekintésekor.");
+            }
+          },
+          async elfogadFelkeres(temaID) {
+            try {
+              const res = await fetch(
+                "http://localhost:3000/api/elfogad-felkeres",
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  credentials: "include",
+                  body: JSON.stringify({ temaID }),
+                }
+              );
+
+              if (!res.ok) {
+                throw new Error("Hiba a felkérés elfogadásakor.");
+              }
+
+              const data = await res.json();
+              alert(data.message || "Felkérés sikeresen elfogadva!");
+
+              // Frissítsd a témák állapotát
+              const tema = this.biraloTemak.find((t) => t.temaID === temaID);
+              if (tema) tema.biralva = 2;
+              this.fetchBiraloTemak(); // Bíráló témák újratöltése
+            } catch (err) {
+              console.error("Hiba a felkérés elfogadásakor:", err);
+              alert("Hiba történt a felkérés elfogadásakor.");
+            }
+          },
+
+          async elutasitFelkeres(temaID) {
+            try {
+              const res = await fetch(
+                "http://localhost:3000/api/elutasit-felkeres",
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  credentials: "include",
+                  body: JSON.stringify({ temaID }),
+                }
+              );
+
+              if (!res.ok) {
+                throw new Error("Hiba a felkérés elutasításakor.");
+              }
+
+              const data = await res.json();
+              alert(data.message || "Felkérés sikeresen elutasítva!");
+
+              // Frissítsd a témák állapotát
+              const tema = this.biraloTemak.find((t) => t.temaID === temaID);
+              if (tema) tema.biralva = 0;
+              this.fetchBiraloTemak(); // Bíráló témák újratöltése
+            } catch (err) {
+              console.error("Hiba a felkérés elutasításakor:", err);
+              alert("Hiba történt a felkérés elutasításakor.");
+            }
+          },
+          async feltoltBiralat(temaID) {
+            alert(`Bírálat feltöltése a(z) ${temaID} témához!`);
+            // Itt megnyithatsz egy fájlfeltöltő modált vagy navigálhatsz egy másik oldalra
+
+            // Példa állapot frissítésre
+            const tema = this.biraloTemak.find((t) => t.temaID === temaID);
+            if (tema) tema.biralva = 3;
           },
           felkeresBiralo() {
             if (!this.kivalasztottBiralo) {
@@ -562,18 +713,37 @@
                   throw new Error("Hiba történt a bíráló felkérésekor.");
                 }
                 return res.json();
+                this.fetchKonzulensTemak();
               })
               .then((data) => {
                 alert(data.message || "Bíráló sikeresen felkérve!");
                 this.showModal = false; // Modális ablak bezárása
                 this.kivalasztottTemaID = null;
                 this.kivalasztottBiralo = null;
-                fetchTemak(); // Témák újratöltése
+                this.fetchKonzulensTemak(); // Témák újratöltése
               })
               .catch((err) => {
                 console.error("Hiba a bíráló felkérésekor:", err);
                 alert("Hiba történt a bíráló felkérésekor.");
               });
+          },
+          refreshData() {
+            if (this.auth) {
+              this.fetchTemak(); // Témák betöltése
+              this.fetchKonzulensTemak(); // Konzulens témák betöltése
+              this.fetchBiraloTemak(); // Bíráló témák betöltése
+              this.loadHallgatok(); // Hallgatók betöltése
+              this.loadResztvevok(); // Résztvevők betöltése
+              this.fetchSzervezetek(); // Szervezetek betöltése
+            } else {
+              // Ha nincs bejelentkezve, töröljük az adatokat
+              this.temak = [];
+              this.konzulensTemak = [];
+              this.biraloTemak = [];
+              this.hallgatok = [];
+              this.resztvevok = [];
+              this.szervezetek = [];
+            }
           },
         },
         created() {
@@ -583,6 +753,7 @@
           this.fetchSzervezetek();
           this.loadResztvevok();
           this.fetchBiraloTemak(); // Bíráló témák betöltése
+          this.fetchKonzulensTemak(); // Konzulens témák betöltése
           window.addEventListener("message", this.messageListener);
         },
 

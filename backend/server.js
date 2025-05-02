@@ -200,7 +200,7 @@ app.post("/api/register", async (req, res) => {
     rvJelszo,
     rvNEV,
     rvSzervezetID,
-    rvVegzetseg,
+    rvVegzettseg,
   } = req.body;
 
   // Adatbázis lekérdezés a regisztrációhoz
@@ -210,16 +210,18 @@ app.post("/api/register", async (req, res) => {
   `;
 
   try {
-    await db.execute(query, [
+    await pool.execute(query, [
       rvEmail,
       rvFelhasznalonev,
       rvNEV,
       rvSzervezetID,
-      rvVegzetseg,
+      rvVegzettseg,
       rvJelszo,
     ]);
     res.json({ message: "Sikeres regisztráció!" });
   } catch (err) {
+    console.error("Regisztrációs hiba:", err);
+    console.log("Kapott adatok:", req.body);
     res.status(500).json({ error: "Hiba történt a regisztráció során!" });
   }
 });
@@ -484,6 +486,7 @@ app.post("/api/tema", async (req, res) => {
     res.status(500).json({ error: "Hiba történt a téma mentésekor" });
   }
 });
+/*//felhasználóval kapcsolatos téma lekérdezése
 app.get("/api/kapcsolodoTema", (req, res) => {
   const konzulensID = req.session.userID; // A bejelentkezett felhasználó ID-ja
 
@@ -494,7 +497,7 @@ app.get("/api/kapcsolodoTema", (req, res) => {
     }
     res.json(results);
   });
-});
+});*/
 
 //bíráló felkérése
 app.post("/felkeres-biralot", (req, res) => {
@@ -532,6 +535,70 @@ app.post("/felkeres-biralot", (req, res) => {
   });
 });
 
+app.post("/api/elfogad-felkeres", async (req, res) => {
+  const { temaID } = req.body;
+  const biraloID = req.session.user?.rvID; // A bejelentkezett bíráló ID-ja
+
+  if (!biraloID) {
+    return res.status(401).json({ error: "Nem vagy bejelentkezve." });
+  }
+
+  try {
+    // Frissítjük a `tema` táblát
+    const updateTemaSql = `
+      UPDATE tema
+      SET biraloID = ?
+      WHERE temaID = ?
+    `;
+    await pool.execute(updateTemaSql, [biraloID, temaID]);
+
+    // Frissítjük a `biralo` táblát
+    const updateBiraloSql = `
+      UPDATE biralo
+      SET allapot = 'elfogadva'
+      WHERE BtemaID = ? AND BbiraloID = ?
+    `;
+    await pool.execute(updateBiraloSql, [temaID, biraloID]);
+
+    res.json({ message: "Felkérés sikeresen elfogadva!" });
+  } catch (err) {
+    console.error("Hiba a felkérés elfogadásakor:", err);
+    res.status(500).json({ error: "Hiba történt a felkérés elfogadásakor." });
+  }
+});
+
+app.post("/api/elutasit-felkeres", async (req, res) => {
+  const { temaID } = req.body;
+  const biraloID = req.session.user?.rvID; // A bejelentkezett bíráló ID-ja
+
+  if (!biraloID) {
+    return res.status(401).json({ error: "Nem vagy bejelentkezve." });
+  }
+
+  try {
+    // Frissítjük a `biralo` táblát
+    const updateBiraloSql = `
+      UPDATE biralo
+      SET allapot = 'elutasítva'
+      WHERE BtemaID = ? AND BbiraloID = ?
+    `;
+    await pool.execute(updateBiraloSql, [temaID, biraloID]);
+
+    // Frissítjük a `tema` táblát
+    const updateTemaSql = `
+      UPDATE tema
+      SET biralva = 0
+      WHERE temaID = ?
+    `;
+    await pool.execute(updateTemaSql, [temaID]);
+
+    res.json({ message: "Felkérés sikeresen elutasítva!" });
+  } catch (err) {
+    console.error("Hiba a felkérés elutasításakor:", err);
+    res.status(500).json({ error: "Hiba történt a felkérés elutasításakor." });
+  }
+});
+
 app.get("/api/osszes-biralo", (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({ error: "Nem vagy bejelentkezve." });
@@ -545,6 +612,35 @@ app.get("/api/osszes-biralo", (req, res) => {
   `;
 
   db.query(sql, [bejelentkezettID], (err, results) => {
+    if (err) {
+      console.error("Hiba a bírálók lekérdezésekor:", err);
+      res.status(500).json({ error: "Hiba a bírálók lekérésekor." });
+    } else {
+      res.json(results);
+    }
+  });
+});
+
+app.get("/api/osszes-biralo/:temaID", (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: "Nem vagy bejelentkezve." });
+  }
+
+  const bejelentkezettID = req.session.user.rvID;
+  const temaID = req.params.temaID;
+
+  const sql = `
+    SELECT rvID, rvNEV AS nev
+    FROM resztvevok
+    WHERE rvID != ?
+      AND rvID NOT IN (
+        SELECT konzulensID
+        FROM konzulens
+        WHERE temaID = ?
+      )
+  `;
+
+  db.query(sql, [bejelentkezettID, temaID], (err, results) => {
     if (err) {
       console.error("Hiba a bírálók lekérdezésekor:", err);
       res.status(500).json({ error: "Hiba a bírálók lekérésekor." });
@@ -600,10 +696,11 @@ app.get("/api/biralo-temak", (req, res) => {
   const biraloID = req.session.user.rvID;
 
   const sql = `
-    SELECT t.temaID, t.temaCim
+    SELECT t.temaID, t.temaCim, t.biralva
     FROM tema t
     INNER JOIN biralo b ON t.temaID = b.BtemaID
     WHERE b.BbiraloID = ?
+  AND b.allapot IN ('felkeres', 'elfogadva');
   `;
 
   db.query(sql, [biraloID], (err, results) => {
@@ -614,6 +711,58 @@ app.get("/api/biralo-temak", (req, res) => {
       res.json(results);
     }
   });
+});
+
+// Konzulens témák lekérdezése
+app.get("/api/konzulens-temak", (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: "Nem vagy bejelentkezve." });
+  }
+
+  const konzulensID = req.session.user.rvID;
+
+  const sql = `
+    SELECT t.temaID, t.temaCim, t.biraloID, t.biralva
+    FROM tema t
+    INNER JOIN konzulens k ON t.temaID = k.temaID
+    WHERE k.konzulensID = ?
+  `;
+
+  db.query(sql, [konzulensID], (err, results) => {
+    if (err) {
+      console.error("Hiba a konzulens témák lekérdezésekor:", err);
+      res.status(500).json({ error: "Hiba a konzulens témák lekérésekor." });
+    } else {
+      res.json(results);
+    }
+  });
+});
+
+// Téma dokumentumok lekérdezése
+app.get("/api/tema-dokumentumok/:temaID", async (req, res) => {
+  const temaID = req.params.temaID;
+
+  try {
+    const [rows] = await pool.execute(
+      `SELECT dokID, eredeti_nev, eleres 
+       FROM dokumentumok 
+       WHERE temaID = ? AND tipus = 1`, // Csak a témakiíró dokumentumokat kérjük le
+      [temaID]
+    );
+
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Nincs témakiíró dokumentum ehhez a témához." });
+    }
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Hiba a dokumentumok lekérdezésekor:", err);
+    res
+      .status(500)
+      .json({ error: "Hiba történt a dokumentumok lekérdezésekor." });
+  }
 });
 
 // Indítsuk el a szervert

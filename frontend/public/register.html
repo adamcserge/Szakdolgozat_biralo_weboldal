@@ -162,6 +162,15 @@
           // Regisztrációs adatküldés
           async register() {
             try {
+              console.log("Küldött adatok:", {
+                rvNEV: this.rvNEV,
+                rvEmail: this.rvEmail,
+                rvFelhasznalonev: this.rvFelhasznalonev,
+                rvJelszo: this.rvJelszo,
+                rvSzervezetID: this.selectedSzervezet,
+                rvVegzettseg: this.selectedVegzettseg,
+              });
+
               const res = await axios.post(
                 "http://localhost:3000/api/register",
                 {
@@ -175,10 +184,10 @@
               );
 
               this.uzenet = res.data.message || "Sikeres regisztráció!";
-              // Ablak bezárása és üzenet küldése a szülőnek
               window.opener.postMessage("registerSuccess", "*");
               window.close();
             } catch (err) {
+              console.error("Hiba a regisztráció során:", err); // Hibakeresés
               this.uzenet =
                 "Hiba: " + (err.response?.data?.error || err.message);
             }
