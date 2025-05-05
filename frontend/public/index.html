@@ -38,6 +38,7 @@
 
                 <!-- Felkérés folyamatban szöveg -->
                 <span v-else-if="tema.biralva === 1">Felkérés folyamatban</span>
+                <span v-else-if="tema.biralva === 2">Bírálat elfogadva</span>
               </li>
             </ul>
           </div>
@@ -159,12 +160,14 @@
             <button @click="megtekintDokumentum(tema.temaID)">
               Témakiíró lap megtekintése
             </button>
+
+            <!-- Elfogadás és Elutasítás gombok -->
             <div v-if="tema.biralva === 1">
               <button @click="elfogadFelkeres(tema.temaID)">Elfogadás</button>
               <button @click="elutasitFelkeres(tema.temaID)">Elutasítás</button>
             </div>
 
-            <!-- Bírálat feltöltése -->
+            <!-- Bírálat feltöltése gomb -->
             <div v-else-if="tema.biralva === 2">
               <button @click="feltoltBiralat(tema.temaID)">
                 Bírálat feltöltése
@@ -544,12 +547,20 @@
               const res = await fetch(
                 "http://localhost:3000/api/biralo-temak",
                 {
-                  credentials: "include", // Küldi a session cookie-t
+                  credentials: "include",
                 }
               );
               if (!res.ok) throw new Error("Hiba a bíráló témák lekérésekor.");
-              this.biraloTemak = await res.json();
-              console.log("Bíráló témák:", this.biraloTemak); // Ellenőrzés
+              const temak = await res.json();
+
+              // Duplikációk eltávolítása
+              const uniqueTemak = temak.filter(
+                (tema, index, self) =>
+                  index === self.findIndex((t) => t.temaID === tema.temaID)
+              );
+
+              this.biraloTemak = uniqueTemak;
+              console.log("Bíráló témák:", this.biraloTemak);
             } catch (err) {
               console.error("Hiba a bíráló témák lekérésekor:", err);
             }
@@ -675,6 +686,14 @@
             })
               .then((res) => {
                 if (!res.ok) {
+                  if (res.status === 400) {
+                    // Ha a státuszkód 400, akkor a bíráló már fel van kérve
+                    return res.json().then((data) => {
+                      throw new Error(
+                        data.error || "Ez a bíráló már fel van kérve."
+                      );
+                    });
+                  }
                   throw new Error("Hiba történt a bíráló felkérésekor.");
                 }
                 return res.json();
@@ -689,7 +708,7 @@
               })
               .catch((err) => {
                 console.error("Hiba a bíráló felkérésekor:", err);
-                alert("Hiba történt a bíráló felkérésekor.");
+                alert(err.message || "Hiba történt a bíráló felkérésekor.");
               });
           },
           refreshData() {

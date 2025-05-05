@@ -503,34 +503,51 @@ app.get("/api/kapcsolodoTema", (req, res) => {
 app.post("/felkeres-biralot", (req, res) => {
   const { temaID, biraloID } = req.body;
 
-  // SQL lekérdezés a bíráló felkéréséhez
-  const insertSql = `
-    INSERT INTO biralo (BtemaID, BbiraloID, allapot)
-    VALUES (?, ?, 'felkeres')
+  // Ellenőrizzük, hogy létezik-e már a bíráló és téma kombináció
+  const checkSql = `
+    SELECT * FROM biralo WHERE BtemaID = ? AND BbiraloID = ?
   `;
 
-  // SQL lekérdezés a tema tábla frissítéséhez
-  const updateSql = `
-    UPDATE tema
-    SET biralva = 1
-    WHERE temaID = ?
-  `;
-
-  // Bíráló felkérése
-  db.query(insertSql, [temaID, biraloID], (err, result) => {
-    if (err) {
-      console.error("Hiba a bíráló felkérésekor:", err);
-      return res.status(500).json({ error: "Hiba a felkérés során." });
+  db.query(checkSql, [temaID, biraloID], (checkErr, results) => {
+    if (checkErr) {
+      console.error("Hiba az ellenőrzés során:", checkErr);
+      return res.status(500).json({ error: "Hiba az ellenőrzés során." });
     }
 
-    // Téma frissítése
-    db.query(updateSql, [temaID], (updateErr) => {
-      if (updateErr) {
-        console.error("Hiba a téma frissítésekor:", updateErr);
-        return res.status(500).json({ error: "Hiba a téma frissítése során." });
+    if (results.length > 0) {
+      return res
+        .status(400)
+        .json({ error: "Ez a bíráló már fel van kérve ehhez a témához." });
+    }
+
+    // Ha nem létezik, beszúrjuk az új sort
+    const insertSql = `
+      INSERT INTO biralo (BtemaID, BbiraloID, allapot)
+      VALUES (?, ?, 'felkeres')
+    `;
+
+    const updateSql = `
+      UPDATE tema
+      SET biralva = 1
+      WHERE temaID = ?
+    `;
+
+    db.query(insertSql, [temaID, biraloID], (insertErr) => {
+      if (insertErr) {
+        console.error("Hiba a bíráló felkérésekor:", insertErr);
+        return res.status(500).json({ error: "Hiba a felkérés során." });
       }
 
-      res.json({ message: "Bíráló sikeresen felkérve.", temaID });
+      db.query(updateSql, [temaID], (updateErr) => {
+        if (updateErr) {
+          console.error("Hiba a téma frissítésekor:", updateErr);
+          return res
+            .status(500)
+            .json({ error: "Hiba a téma frissítése során." });
+        }
+
+        res.json({ message: "Bíráló sikeresen felkérve.", temaID });
+      });
     });
   });
 });
@@ -544,14 +561,6 @@ app.post("/api/elfogad-felkeres", async (req, res) => {
   }
 
   try {
-    // Frissítjük a `tema` táblát
-    const updateTemaSql = `
-      UPDATE tema
-      SET biraloID = ?
-      WHERE temaID = ?
-    `;
-    await pool.execute(updateTemaSql, [biraloID, temaID]);
-
     // Frissítjük a `biralo` táblát
     const updateBiraloSql = `
       UPDATE biralo
@@ -559,6 +568,14 @@ app.post("/api/elfogad-felkeres", async (req, res) => {
       WHERE BtemaID = ? AND BbiraloID = ?
     `;
     await pool.execute(updateBiraloSql, [temaID, biraloID]);
+
+    // Frissítjük a `tema` táblát
+    const updateTemaSql = `
+      UPDATE tema
+      SET biraloID = ?, biralva = 2
+      WHERE temaID = ?
+    `;
+    await pool.execute(updateTemaSql, [biraloID, temaID]);
 
     res.json({ message: "Felkérés sikeresen elfogadva!" });
   } catch (err) {
