@@ -21,12 +21,13 @@
           <button @click="logout">Kijelentkezés</button>
         </div>
         <p>Üdvözlöm az oldalon, {{ user.rvFelhasznalonev }}!</p>
-        <div><h2>Kapcsolódó témái</h2></div>
+        <div><h2>Konzultált témái</h2></div>
         <template>
           <div v-for="tema in konzulensTemak" :key="tema.temaID">
             <ul>
               <li class="tema-sor">
                 <span class="tema-cim">{{ tema.temaCim }}</span>
+
                 <!-- Bíráló felkérése gomb -->
                 <button
                   v-if="!tema.biraloID && tema.biralva !== 1"
@@ -38,7 +39,18 @@
 
                 <!-- Felkérés folyamatban szöveg -->
                 <span v-else-if="tema.biralva === 1">Felkérés folyamatban</span>
+
+                <!-- Bírálat elfogadva szöveg -->
                 <span v-else-if="tema.biralva === 2">Bírálat elfogadva</span>
+
+                <!-- Bírálat letöltése gomb -->
+                <button
+                  v-else-if="tema.biralva === 3"
+                  @click="downloadBiralat(tema.temaID)"
+                  class="biralat-letoltes-gomb"
+                >
+                  Bírálat letöltése
+                </button>
               </li>
             </ul>
           </div>
@@ -180,6 +192,16 @@
             </div>
           </li>
         </ul>
+
+        <!-- Bírálat feltöltése modal -->
+        <div v-if="showBiralatModal" class="modal">
+          <h3>Bírálat feltöltése</h3>
+          <p>Téma: {{ kivalasztottTemaCim }}</p>
+          <input type="file" @change="handleBiralatFileUpload" />
+          <button @click="uploadBiralat">Feltöltés</button>
+          <button @click="showBiralatModal = false">Mégse</button>
+          <p>{{ biralatUploadMessage }}</p>
+        </div>
       </div>
     </div>
     <script>
@@ -264,6 +286,8 @@
             kivalasztottTemaID: null,
             kivalasztottBiralo: null,
             kivalasztottTemaCim: null, // Téma címének tárolása
+            showBiralatModal: false,
+            biralatUploadMessage: "",
           };
         },
         methods: {
@@ -663,12 +687,70 @@
             }
           },
           async feltoltBiralat(temaID) {
-            alert(`Bírálat feltöltése a(z) ${temaID} témához!`);
-            // Itt megnyithatsz egy fájlfeltöltő modált vagy navigálhatsz egy másik oldalra
-
-            // Példa állapot frissítésre
             const tema = this.biraloTemak.find((t) => t.temaID === temaID);
-            if (tema) tema.biralva = 3;
+            if (tema) {
+              this.kivalasztottTemaCim = tema.temaCim; // Téma címének beállítása
+            }
+            this.kivalasztottTemaID = temaID; // Aktuális téma ID
+            this.showBiralatModal = true; // Modális ablak megnyitása
+          },
+          handleBiralatFileUpload(event) {
+            this.selectedFile = event.target.files[0];
+          },
+          async uploadBiralat() {
+            if (!this.selectedFile || !this.kivalasztottTemaID) {
+              this.biralatUploadMessage =
+                "Kérlek válassz ki fájlt és témát a bírálathoz!";
+              return;
+            }
+            const formData = new FormData();
+            formData.append("file", this.selectedFile);
+            formData.append("temaID", this.kivalasztottTemaID);
+            try {
+              const res = await fetch(
+                "http://localhost:3000/api/feltolt-biralat",
+                {
+                  method: "POST",
+                  body: formData,
+                  credentials: "include",
+                }
+              );
+              if (!res.ok) throw new Error(`Feltöltési hiba: ${res.status}`);
+              const data = await res.json();
+              this.biralatUploadMessage = `Sikeresen feltöltve: ${data.fileName}`;
+              this.selectedFile = null;
+              this.showBiralatModal = false;
+              this.fetchBiraloTemak(); // Bíráló témák újratöltése
+            } catch (err) {
+              console.error("Bírálat feltöltési hiba:", err);
+              this.biralatUploadMessage =
+                "Hiba történt a bírálat feltöltésekor.";
+            }
+          },
+          async downloadBiralat(temaID) {
+            try {
+              const res = await fetch(
+                `http://localhost:3000/api/tema-biralat/${temaID}`,
+                {
+                  credentials: "include",
+                }
+              );
+
+              if (!res.ok) {
+                throw new Error("Hiba a bírálat letöltésekor.");
+              }
+
+              const data = await res.json();
+              if (data.eleres) {
+                const url = `http://localhost:3000/uploads/${data.eleres}`;
+                window.open(url, "_blank"); // Megnyitja a fájlt új lapon
+              } else {
+                alert("Ehhez a témához nincs feltöltött bírálat.");
+              }
+            } catch (err) {
+              console.error("Hiba a bírálat letöltésekor:", err);
+              alert("Hiba történt a bírálat letöltésekor.");
+            }
           },
           felkeresBiralo() {
             if (!this.kivalasztottBiralo) {

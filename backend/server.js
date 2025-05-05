@@ -691,6 +691,59 @@ app.post("/feltolt-biralat", upload.single("file"), (req, res) => {
   });
 });*/
 
+app.post("/api/feltolt-biralat", upload.single("file"), async (req, res) => {
+  const user = req.session.user;
+  if (!user) {
+    return res.status(401).json({ error: "Nem vagy bejelentkezve" });
+  }
+
+  const { temaID } = req.body;
+  const file = req.file;
+
+  if (!file) {
+    return res.status(400).json({ error: "Nincs fájl feltöltve" });
+  }
+
+  try {
+    // Fájlelérési útvonal és eredeti fájlnév mentése a `biralat` táblába
+    const biralatSql = `INSERT INTO biralat (temaID, biraloID, eleres) VALUES (?, ?, ?)`;
+    await pool.execute(biralatSql, [temaID, user.rvID, file.filename]);
+
+    // Fájlelérési útvonal és eredeti fájlnév mentése a `dokumentumok` táblába
+    const dokumentumSql = `INSERT INTO dokumentumok (temaID, eleres, eredeti_nev, tipus, feltolto) VALUES (?, ?, ?, ?, ?)`;
+    await pool.execute(dokumentumSql, [
+      temaID,
+      file.filename,
+      file.originalname,
+      4, // 4 = Bírálat típus
+      user.rvID,
+    ]);
+
+    // A `tema` tábla `biralva` mezőjének frissítése 3-ra
+    const temaSql = `UPDATE tema SET biralva = 3 WHERE temaID = ?`;
+    await pool.execute(temaSql, [temaID]);
+
+    res.json({
+      message: "Bírálat sikeresen feltöltve!",
+      fileName: file.originalname,
+    });
+  } catch (error) {
+    console.error("Hiba a bírálat feltöltésekor:", error);
+
+    // Fájl törlése, ha DB mentés meghiúsult
+    const filePath = path.join(__dirname, "uploads", file.filename);
+    fs.unlink(filePath, (unlinkErr) => {
+      if (unlinkErr) {
+        console.error("Nem sikerült törölni a fájlt:", unlinkErr);
+      } else {
+        console.log("Törölt fájl adatbázishiba miatt:", file.filename);
+      }
+    });
+
+    res.status(500).json({ error: "Hiba történt a bírálat mentésekor" });
+  }
+});
+
 // Résztvevők lekérdezése
 app.get("/api/resztvevok", async (req, res) => {
   try {
@@ -779,6 +832,29 @@ app.get("/api/tema-dokumentumok/:temaID", async (req, res) => {
     res
       .status(500)
       .json({ error: "Hiba történt a dokumentumok lekérdezésekor." });
+  }
+});
+
+// Téma bírálat lekérdezése
+app.get("/api/tema-biralat/:temaID", async (req, res) => {
+  const temaID = req.params.temaID;
+
+  try {
+    const [rows] = await pool.execute(
+      `SELECT eleres 
+       FROM biralat 
+       WHERE temaID = ?`,
+      [temaID]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Ehhez a témához nincs bírálat." });
+    }
+
+    res.json(rows[0]); // Visszaadja az elérési útvonalat
+  } catch (err) {
+    console.error("Hiba a bírálat lekérdezésekor:", err);
+    res.status(500).json({ error: "Hiba történt a bírálat lekérdezésekor." });
   }
 });
 
