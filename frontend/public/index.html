@@ -17,62 +17,27 @@
       </div>
 
       <div v-else>
-        <button @click="logout">Kijelentkezés</button>
-        <p>Üdv, {{ user.rvFelhasznalonev }} ({{ user.rvEmail }})!</p>
-
-        <!--<h1>Hallgatók kezelése</h1>
-
-         Hallgatók listázása 
-        <button @click="loadHallgatok">Hallgatók betöltése</button>
-        <ul>
-          <li v-for="hallgato in hallgatok" :key="hallgato.hallgatoID">
-            {{ hallgato.hallgatoNEV }} - {{ hallgato.hallgatoNK }} - {{
-            hallgato.hallgatoEMAIL }}
-          </li>
-        </ul>-->
-
-        <!-- Hallgató hozzáadása 
-        <h2>Új hallgató hozzáadása</h2>
-        <input v-model="nev" placeholder="Név" />
-        <input v-model="neptun" placeholder="Neptun kód" />
-        <input v-model="email" placeholder="Email" />
-        <button @click="kuldes">Küldés</button>
-        <p>{{ uzenet }}</p>-->
-
-        <!-- Hallgató lekérdezése ID alapján 
-        <h2>Hallgató keresése ID alapján</h2>
-        <input v-model="keresettID" type="number" placeholder="Hallgató ID" />
-        <button @click="keresHallgato">Keresés</button>
-        <div v-if="hallgato">
-          <h3>Hallgató adatai:</h3>
-          <p>Név: {{ hallgato.hallgatoNEV }}</p>
-          <p>Neptun kód: {{ hallgato.hallgatoNK }}</p>
-          <p>Email: {{ hallgato.hallgatoEMAIL }}</p>
+        <div class="logout-wrapper">
+          <button @click="logout">Kijelentkezés</button>
         </div>
-        <p v-if="hibaUzenet" style="color: red">{{ hibaUzenet }}</p>-->
-
-        <!--<template>
-          <div>
-            <h2>Kapcsolatos témái</h2>
-            <ul>
-              <li v-for="tema in temak" :key="tema.temaID">
-                {{ tema.temaCim }}
-                 További részletek megjelenítése, pl. bíráló státusza
-              </li>
-            </ul>
-          </div>
-        </template>-->
+        <p>Üdvözlöm az oldalon, {{ user.rvFelhasznalonev }}!</p>
+        <div><h2>Kapcsolódó témái</h2></div>
         <template>
           <div v-for="tema in konzulensTemak" :key="tema.temaID">
             <ul>
-              <li>
-                {{ tema.temaCim }}
+              <li class="tema-sor">
+                <span class="tema-cim">{{ tema.temaCim }}</span>
+                <!-- Bíráló felkérése gomb -->
                 <button
                   v-if="!tema.biraloID && tema.biralva !== 1"
                   @click="openModal(tema.temaID)"
+                  class="felkeres-gomb"
                 >
                   Bíráló felkérése
                 </button>
+
+                <!-- Felkérés folyamatban szöveg -->
+                <span v-else-if="tema.biralva === 1">Felkérés folyamatban</span>
               </li>
             </ul>
           </div>
@@ -167,7 +132,7 @@
               Szervezet választása
               <span>{{ isSzervezetValasztasOpen ? '-' : '+' }}</span>
             </h3>
-            <ul v-if="isSzervezetValasztasOpen">
+            <ul class="szervezetfa" v-if="isSzervezetValasztasOpen">
               <tree-item
                 v-for="szervezet in szervezetek"
                 :key="szervezet.szervezetID"
