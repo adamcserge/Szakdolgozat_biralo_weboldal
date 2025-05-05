@@ -371,13 +371,20 @@ app.get("/api/feltoltott-fajlok", async (req, res) => {
 
   try {
     const [rows] = await pool.execute(
-      "SELECT dokID, eredeti_nev, eleres FROM dokumentumok WHERE feltolto = ?",
+      `
+      SELECT d.dokID, d.eredeti_nev, d.eleres, d.tipus, t.temaCim, t.biralva
+      FROM dokumentumok d
+      LEFT JOIN tema t ON d.temaID = t.temaID
+      WHERE d.feltolto = ?
+      `,
       [user.rvID]
     );
     res.json(rows);
   } catch (err) {
-    console.error("Hiba a fájlok lekérdezésekor:", err);
-    res.status(500).json({ error: "Nem sikerült a fájlok listázása." });
+    console.error("Hiba a dokumentumok lekérdezésekor:", err);
+    res
+      .status(500)
+      .json({ error: "Hiba történt a dokumentumok lekérdezésekor." });
   }
 });
 

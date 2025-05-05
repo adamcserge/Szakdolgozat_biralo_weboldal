@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hallgatók kezelése</title>
+    <title>Szakdolgozat bíráló weboldal</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link rel="stylesheet" href="style/index.css" />
@@ -85,7 +85,11 @@
           <option value="5">Egyéb</option>
         </select>
         <select v-model="selectedTemaID">
-          <option v-for="tema in temak" :value="tema.temaID" :key="tema.temaID">
+          <option
+            v-for="tema in konzulensTemak"
+            :value="tema.temaID"
+            :key="tema.temaID"
+          >
             {{ tema.temaCim }}
           </option>
         </select>
@@ -97,9 +101,18 @@
         <button @click="loadFiles">Fájlok betöltése</button>
         <ul>
           <li v-for="file in files" :key="file.dokID">
-            {{ file.eredeti_nev }}
+            <strong>Téma:</strong> {{ file.temaCim || "Nincs hozzárendelve"
+            }}<br />
+            <strong>Típus:</strong> {{ getDokumentumTipus(file.tipus) }}<br />
+            <strong>Fájl:</strong> {{ file.eredeti_nev }}
             <button @click="downloadFile(file.eleres)">Letöltés</button>
-            <button @click="torolDokumentum(file.dokID)">Törlés</button>
+            <!-- Törlés gomb csak akkor jelenik meg, ha biralva === 0 -->
+            <button
+              v-if="file.biralva === 0"
+              @click="confirmDelete(file.dokID)"
+            >
+              Törlés
+            </button>
           </li>
         </ul>
 
@@ -809,6 +822,24 @@
               this.hallgatok = [];
               this.resztvevok = [];
               this.szervezetek = [];
+            }
+          },
+          getDokumentumTipus(tipus) {
+            switch (
+              Number(tipus) // A `tipus` értékét számmá alakítjuk
+            ) {
+              case 1:
+                return "Témakiíró lap";
+              case 2:
+                return "Szakdolgozat";
+              case 3:
+                return "Titoktartási nyilatkozat";
+              case 4:
+                return "Bírálat";
+              case 5:
+                return "Egyéb";
+              default:
+                return "Ismeretlen típus";
             }
           },
         },
