@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin felület</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="style/admin.css" />
+  </head>
+  <body>
+    <div id="admin">
+      <h1>Admin felület</h1>
+      <div v-if="!user">
+        Nincs bejelentkezve.
+        <button @click="login">Bejelentkezés</button>
+      </div>
+
+      <div v-else>
+        <div>
+          Üdvözlöm az admin felületen, {{ user.rvFelhasznalonev }}!
+          <button @click="logout" class="logout-wrapper">Kijelentkezés</button>
+          <button @click="goToIndex" class="admin-button">
+            Vissza a főoldalra
+          </button>
+        </div>
+        <div id="adminUzenetek">
+            <h2>Beérkezett üzenetek</h2>
+            <div v-if="uzenetek.length === 0">Nincs beérkezett üzenet.</div>
+            <div v-else class="uzenet-lista scrollable-list">
+              <ul>
+                <li
+                  v-for="uzenet in uzenetek"
+                  :key="uzenet.uzenetID"
+                  class="uzenet-box"
+                >
+                  <h3>{{ uzenet.rvNEV }}</h3>
+                  <b>Típus: </b>{{ uzenet.tipus }}
+                  <p>{{ uzenet.tartalom }}</p>
+          
+                  <button
+                    v-if="uzenet.allapot === 'uj'"
+                    @click="elolvasva(uzenet.uzenetID)"
+                  >
+                    Elolvasva
+                  </button>
+                  <button
+                    v-else-if="uzenet.allapot === 'folyamatban'"
+                    @click="feldolgozva(uzenet.uzenetID)"
+                  >
+                    Feldolgozva
+                  </button>
+                  <span v-else-if="uzenet.allapot === 'megoldva'">
+                    Feldolgozva
+                    <button @click="torolUzenet(uzenet.uzenetID)">Törlés</button>
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          
+        <div>
+          <button @click="showModal = true">Admin jog hozzáadása</button>
+        
+          <!-- Modális ablak -->
+          <div v-if="showModal" class="modal">
+            <input
+              type="text"
+              v-model="searchQuery"
+              placeholder="Keresés név alapján..."
+              class="search-input"
+            />
+
+            <div class="scrollable-list">
+              <ul v-if="filteredNemAdminok.length > 0">
+                <li v-for="nemAdmin in filteredNemAdminok" :key="nemAdmin.rvID">
+                  {{ nemAdmin.rvNEV }} - {{ nemAdmin.szervezetNEV }}
+
+                  <div>
+                    <button @click="addAdmin(nemAdmin.rvID)">
+                      Jogosultság hozzáadása
+                    </button>
+                  </div>
+                </li>
+              </ul>
+              <div v-else>Nincs találat a megadott keresésre.</div>
+            </div>
+
+            <button @click="showModal = false">Bezárás</button>
+          </div>
+          <div>
+          <button @click="showAdminModal = true">
+            Admin jog megszüntetése
+          </button>
+        </div>
+          <div v-if="showAdminModal" class="modal">
+            <div>
+              <h2>Admin joggal rendelkezők</h2>
+              <input
+                type="text"
+                v-model="adminSearchQuery"
+                placeholder="Keresés admin név alapján..."
+                class="search-input"
+              />
+              <div></div>
+              <div class="scrollable-list">
+                <ul v-if="filteredAdminok.length > 0">
+                  <li v-for="admin in filteredAdminok" :key="admin.rvID">
+                    {{ admin.rvNEV }} - {{ admin.szervezetNEV }}
+                    <div>
+                      <button @click="deleteAdmin(admin.rvID)">
+                        Jogosultság megszűntetése
+                      </button>
+                    </div>
+                  </li>
+                </ul>
+                <div v-else>Nincs találat az adminok között.</div>
+              </div>
+            </div>
+            <button @click="showAdminModal = false">Bezárás</button>
+          </div>
+        </div>
+
+        
+        </div>
+      </div>
+    </div>
+    <script>
+      new Vue({
+        el: "#admin",
+
+        data() {
+          return {
+            user: null,
+            auth: false,
+            rvID: null, // Az admin hozzáadandó felhasználó azonosítója
+            nemAdminok: [], // Nem admin résztvevők listája
+            adminok: [], // Admin résztvevők listája
+            uzenetek: [], // Üzenet a felhasználóktól
+            showModal: false, // Modális ablak megjelenítése
+            showAdminModal: false, // Adminok modális ablak megjelenítése
+
+            searchQuery: "",
+            adminSearchQuery: "",
+          };
+        },
+        computed: {
+          filteredNemAdminok() {
+            const query = this.searchQuery.toLowerCase();
+            return this.nemAdminok.filter((resztvevo) =>
+              resztvevo.rvNEV.toLowerCase().includes(query)
+            );
+          },
+          filteredAdminok() {
+            const query = this.adminSearchQuery.toLowerCase();
+            return this.adminok.filter((admin) =>
+              admin.rvNEV.toLowerCase().includes(query)
+            );
+          },
+        },
+        methods: {
+          async checkLoginStatus() {
+            try {
+              const res = await axios.get("http://localhost:3000/api/user", {
+                withCredentials: true, // Kérem a cookie-kat a kéréshez
+              });
+              this.user = res.data;
+              this.auth = true;
+              this.refreshData(); // Frissítjük az adatokat bejelentkezés után
+            } catch (err) {
+              this.auth = false;
+              this.user = null;
+              this.refreshData(); // Töröljük az adatokat kijelentkezés után
+            }
+          },
+          openLoginWindow() {
+            const width = 450;
+            const height = 500;
+            const left = (window.screen.width - width) / 2;
+            const top = (window.screen.height - height) / 2 - 100;
+            const loginWindow = window.open(
+              "login.html",
+              "Bejelentkezés",
+              `width=${width},height=${height},left=${left},top=${top},resizable=no,scrollbars=no`
+            );
+
+            // Figyeljük, hogy a bejelentkezés sikeres-e
+            const interval = setInterval(() => {
+              if (loginWindow.closed) {
+                clearInterval(interval);
+                this.checkLoginStatus(); // Ellenőrizzük a bejelentkezési állapotot
+              }
+            }, 500);
+          },
+          login() {
+            const width = 450;
+            const height = 500;
+            const left = (window.screen.width - width) / 2;
+            const top = (window.screen.height - height) / 2 - 100;
+            const loginWindow = window.open(
+              "login.html",
+              "Bejelentkezés",
+              `width=${width},height=${height},left=${left},top=${top},resizable=no,scrollbars=no`
+            );
+
+            // Figyeljük, hogy a bejelentkezés sikeres-e
+            const interval = setInterval(() => {
+              if (loginWindow.closed) {
+                clearInterval(interval);
+                this.checkLoginStatus(); // Ellenőrizzük a bejelentkezési állapotot
+                this.refreshData(); // Frissítjük az adatokat bejelentkezés után
+              }
+            }, 500);
+          },
+          async logout() {
+            try {
+              await axios.post(
+                "http://localhost:3000/api/logout",
+                {},
+                {
+                  withCredentials: true,
+                }
+              );
+              window.location.href = "index.html"; // Visszairányítás a főoldalra kijelentkezés után
+            } catch (err) {
+              console.error("Kijelentkezési hiba:", err);
+            }
+          },
+          goToIndex() {
+            window.location.href = "index.html"; // Visszairányítás a főoldalra
+          },
+          async fetchNemAdminok() {
+            try {
+              const res = await axios.get(
+                "http://localhost:3000/api/nemAdmin",
+                {
+                  withCredentials: true,
+                }
+              );
+              this.nemAdminok = res.data;
+            } catch (err) {
+              console.error("Hiba a nem admin résztvevők lekérésekor:", err);
+            }
+          },
+
+          async addAdmin(rvID) {
+            try {
+              const res = await axios.post(
+                "http://localhost:3000/api/addAdmin",
+                { rvID },
+                { withCredentials: true }
+              );
+              alert(res.data.message);
+              this.refreshData(); // Frissítjük az adatokat
+            } catch (err) {
+              console.error("Hiba az admin jogosultság hozzáadásakor:", err);
+              alert("Hiba történt az admin jogosultság hozzáadásakor.");
+            }
+          },
+          async fetchAdminok() {
+            try {
+              const res = await axios.get("http://localhost:3000/api/adminok", {
+                withCredentials: true,
+              });
+              this.adminok = res.data;
+            } catch (err) {
+              console.error("Hiba az adminok lekérésekor:", err);
+            }
+          },
+          async deleteAdmin(rvID) {
+            try {
+              const res = await axios.post(
+                "http://localhost:3000/api/deleteAdmin",
+                { rvID },
+                { withCredentials: true }
+              );
+              alert(res.data.message);
+              this.refreshData(); // Frissítjük az adatokat
+            } catch (err) {
+              console.error("Hiba az admin jogosultság megszüntetésekor:", err);
+              alert("Hiba történt az admin jogosultság megszüntetésekor.");
+            }
+          },
+          async fetchUzenetek() {
+            try {
+              const res = await axios.get(
+                "http://localhost:3000/api/uzenetek",
+                {
+                  withCredentials: true,
+                }
+              );
+              this.uzenetek = res.data;
+            } catch (err) {
+              console.error("Hiba az üzenetek lekérésekor:", err);
+            }
+          },
+          async elolvasva(uzenetID) {
+            try {
+              const res = await axios.post(
+                "http://localhost:3000/api/elolvasva",
+                { uzenetID }, // Az üzenet ID-t elküldjük a backendnek
+                { withCredentials: true }
+              );
+              alert(res.data.message);
+              this.refreshData(); // Frissítjük az adatokat
+            } catch (err) {
+              console.error("Hiba az üzenet elolvasásakor:", err);
+              alert("Hiba történt az üzenet elolvasásakor.");
+            }
+          },
+            async feldolgozva(uzenetID) {
+                try {
+                const res = await axios.post(
+                    "http://localhost:3000/api/feldolgozva",
+                    { uzenetID },
+                    { withCredentials: true }
+                );
+                alert(res.data.message);
+                this.refreshData(); // Frissítjük az adatokat
+                } catch (err) {
+                console.error("Hiba az üzenet feldolgozásakor:", err);
+                alert("Hiba történt az üzenet feldolgozásakor.");
+                }
+            },
+            async torolUzenet(uzenetID) {
+                try {
+                const res = await axios.post(
+                    "http://localhost:3000/api/torolUzenet",
+                    { uzenetID },
+                    { withCredentials: true }
+                );
+                alert(res.data.message);
+                this.refreshData(); // Frissítjük az adatokat
+                } catch (err) {
+                console.error("Hiba az üzenet törlésekor:", err);
+                alert("Hiba történt az üzenet törlésekor.");
+                }
+            },
+          refreshData() {
+            if (this.auth) {
+              this.fetchNemAdminok();
+              this.fetchAdminok(); // Adminok betöltése is
+              this.fetchUzenetek(); // Üzenetek betöltése
+            } else {
+              this.nemAdminok = [];
+              this.adminok = [];
+              this.uzenetek = []; // Üzenetek törlése kijelentkezés után
+            }
+          },
+        },
+        messageListener(event) {
+          if (event.data === "loginSuccess") {
+            this.checkLoginStatus(); // Ellenőrizzük a bejelentkezési állapotot
+            this.refreshData(); // Frissítjük az adatokat bejelentkezés után
+          }
+        },
+
+        created() {
+          this.checkLoginStatus(); // Ellenőrizzük a bejelentkezési állapotot
+          this.fetchNemAdminok(); // Nem admin résztvevők lekérése
+        },
+      });
+    </script>
+  </body>
+</html>

@@ -127,6 +127,12 @@ body::after {
 .logout-wrapper button:hover {
   background-color: #c0392b;
 }
+.admin-button {
+  position: fixed;
+  top: 20px;
+  right: 140px;
+  z-index: 100;
+}
 
 /* Szervezetválasztás konténer */
 ul.szervezetfa {

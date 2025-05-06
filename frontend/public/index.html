@@ -17,9 +17,35 @@
       </div>
 
       <div v-else>
-        <div class="logout-wrapper">
+       
+        <div v-if="user.isAdmin === 1" class="admin-button">
+          <button @click="OpenAdnimPage">Adminisztrációs felület</button>
+        </div>
+        <div v-else class="admin-button">
+          <button @click="showUzenetModal = true">Ügyfélszolgálat</button>
+        </div>
+         <div class="logout-wrapper">
           <button @click="logout">Kijelentkezés</button>
         </div>
+
+<!-- Üzenet küldése modal -->
+        <div v-if="showUzenetModal" class="modal"> 
+          <div id="uzenetKuldes">
+          <select v-model="tipus">
+            <option disabled value="">Válassz típust</option>
+            <option>Hibás adat</option>
+            <option>Új adat felvétel</option>
+            <option>Hibaelhárítás</option>
+            <option>Változtatás</option>
+            <option>Egyéb</option>
+          </select>
+          <textarea v-model="tartalom" placeholder="Írd le a problémát..."></textarea>
+          <button @click="kuldesUzenet">Küldés</button>
+        </div>
+        <button @click="showUzenetModal = false">Bezárás</button>        
+          </div>  
+
+
         <p>Üdvözlöm az oldalon, {{ user.rvFelhasznalonev }}!</p>
         <div><h2>Konzultált témái</h2></div>
         <template>
@@ -135,7 +161,7 @@
          <div> 
           <input v-model="ujTema.temaCim" placeholder="Téma címe" required />
         </div>
-<div>
+        <div>
           <select v-model="ujTema.kapcsolodoTemaID">
             <option disabled value="">Kapcsolódó téma (nem kötelező)</option>
           </div>
@@ -148,8 +174,8 @@
               {{ tema.temaCim }}
             </option>
           </select>
-</div>
-<div>
+        </div>
+        <div>
           <select v-model="ujTema.hallgatoID" required>
             <option disabled value="">Válassz hallgatót</option>
             <option v-for="hallgato in hallgatok" :value="hallgato.hallgatoID">
@@ -157,8 +183,8 @@
             </option></select
           ><!-- Hallgató hozzáadása gomb -->
           <button @click="showHallgatoModal = true" title="Új hallgató felvétele"><b>+</b></button>
-</div>
-<div>
+        </div>
+        <div>
           <!-- További konzulens kiválasztása -->
           <select v-model="ujTema.extraKonzulensID">
             <option disabled value="">
@@ -356,12 +382,15 @@
             showBiralatModal: false,
             biralatUploadMessage: "",
             showHallgatoModal: false,
+            showUzenetModal: false,
             ujHallgato: {
               nev: "",
               neptun: "",
               email: "",
             },
             hallgatoUzenet: "",
+            tipus: "",
+      tartalom: ""
           };
         },
         methods: {
@@ -387,6 +416,7 @@
               "Bejelentkezés",
               `width=${width},height=${height},left=${left},top=${top},resizable=no,scrollbars=no`
             );
+           
 
             // Figyeljük, hogy a bejelentkezés sikeres-e
             const interval = setInterval(() => {
@@ -396,7 +426,10 @@
                 this.refreshData(); // Frissítjük az adatokat
               }
             }, 500);
-          },
+          }, 
+          OpenAdnimPage() {
+    window.location.href = "admin.html";
+  },
 
           async logout() {
             try {
@@ -955,6 +988,26 @@
                 return "Ismeretlen típus";
             }
           },
+
+          async kuldesUzenet() {
+      try {
+        const res = await axios.post("http://localhost:3000/api/uzenet", {
+          tipus: this.tipus,
+          tartalom: this.tartalom
+        }, { withCredentials: true });
+
+        alert(res.data.message);
+        this.tipus = "";
+        this.tartalom = "";
+        this.showUzenetModal = false; // Modális ablak bezárása
+        this.refreshData(); // Adatok frissítése
+         // Modális ablak bezárása
+
+      } catch (err) {
+        console.error("Hiba az üzenet küldésekor:", err);
+        alert("Nem sikerült az üzenet küldése.");
+      }
+    },
         },
         created() {
           this.checkLoginStatus();

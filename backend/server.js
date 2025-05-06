@@ -870,6 +870,193 @@ app.get("/api/tema-biralat/:temaID", async (req, res) => {
     res.status(500).json({ error: "Hiba történt a bírálat lekérdezésekor." });
   }
 });
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Admin felület
+
+app.get("/api/nemAdmin", async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT r.rvID, r.rvNEV, r.rvEmail, s.szervezetNEV
+       FROM resztvevok r
+       LEFT JOIN szervezet s ON r.rvSzervezetID = s.szervezetID
+       WHERE r.isAdmin = 0`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Hiba a nem admin résztvevők lekérésekor:", err);
+    res
+      .status(500)
+      .json({ error: "Nem sikerült a nem admin résztvevők lekérése." });
+  }
+});
+
+app.get("/api/adminok", async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: "Nem vagy bejelentkezve." });
+  }
+
+  const bejelentkezettID = req.session.user.rvID;
+
+  try {
+    const [rows] = await pool.execute(
+      `SELECT r.rvID, r.rvNEV, r.rvEmail, s.szervezetNEV
+       FROM resztvevok r
+       LEFT JOIN szervezet s ON r.rvSzervezetID = s.szervezetID
+       WHERE r.isAdmin = 1 AND r.rvID != ?`,
+      [bejelentkezettID]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Hiba az admin résztvevők lekérésekor:", err);
+    res
+      .status(500)
+      .json({ error: "Nem sikerült az admin résztvevők lekérése." });
+  }
+});
+
+app.post("/api/addAdmin", async (req, res) => {
+  const { rvID } = req.body;
+
+  if (!rvID) {
+    return res.status(400).json({ error: "Hiányzó résztvevő ID" });
+  }
+
+  try {
+    const [result] = await pool.execute(
+      "UPDATE resztvevok SET isAdmin = 1 WHERE rvID = ?",
+      [rvID]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Résztvevő nem található" });
+    }
+
+    res.json({ message: "Résztvevő admin jogosultságot kapott" });
+  } catch (err) {
+    console.error("Hiba az admin jogosultság hozzáadásakor:", err);
+    res
+      .status(500)
+      .json({ error: "Hiba történt az admin jogosultság hozzáadásakor" });
+  }
+});
+
+app.post("/api/deleteAdmin", async (req, res) => {
+  const { rvID } = req.body;
+
+  if (!rvID) {
+    return res.status(400).json({ error: "Hiányzó résztvevő ID" });
+  }
+
+  try {
+    const [result] = await pool.execute(
+      "UPDATE resztvevok SET isAdmin = 0 WHERE rvID = ?",
+      [rvID]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Résztvevő nem található" });
+    }
+
+    res.json({ message: "Admin jogosultság megszüntetve" });
+  } catch (err) {
+    console.error("Hiba az admin jogosultság megszüntetésekor:", err);
+    res
+      .status(500)
+      .json({ error: "Hiba történt az admin jogosultság megszüntetésekor" });
+  }
+});
+
+app.post("/api/uzenet", async (req, res) => {
+  const { tipus, tartalom } = req.body;
+  const rvID = req.session.user?.rvID;
+
+  if (!rvID || !tipus || !tartalom) {
+    return res.status(400).json({ error: "Hiányzó adatok." });
+  }
+
+  try {
+    await pool.execute(
+      `INSERT INTO uzenetek (rvID, tipus, tartalom) VALUES (?, ?, ?)`,
+      [rvID, tipus, tartalom]
+    );
+    res.json({ message: "Üzenet sikeresen elküldve." });
+  } catch (err) {
+    console.error("Hiba üzenet mentésekor:", err);
+    res.status(500).json({ error: "Hiba történt az üzenet mentésekor." });
+  }
+});
+
+app.get("/api/uzenetek", async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT u.uzenetID, u.tipus, u.tartalom, u.datum, u.allapot, r.rvNEV 
+       FROM uzenetek u
+       JOIN resztvevok r ON u.rvID = r.rvID
+       ORDER BY u.datum DESC`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Hiba az üzenetek lekérésekor:", err);
+    res.status(500).json({ error: "Nem sikerült lekérni az üzeneteket." });
+  }
+});
+
+app.post("/api/elolvasva", async (req, res) => {
+  const { uzenetID } = req.body;
+
+  if (!uzenetID) {
+    return res.status(400).json({ error: "Hiányzó üzenetID." });
+  }
+
+  try {
+    await pool.execute(
+      `UPDATE uzenetek SET allapot = 'folyamatban' WHERE uzenetID = ?`,
+      [uzenetID]
+    );
+    res.json({ message: "Üzenet állapota frissítve." });
+  } catch (err) {
+    console.error("Hiba az üzenet állapotának frissítésekor:", err);
+    res
+      .status(500)
+      .json({ error: "Hiba történt az üzenet állapotának frissítésekor." });
+  }
+});
+app.post("/api/feldolgozva", async (req, res) => {
+  const { uzenetID } = req.body;
+
+  if (!uzenetID) {
+    return res.status(400).json({ error: "Hiányzó üzenetID." });
+  }
+
+  try {
+    await pool.execute(
+      `UPDATE uzenetek SET allapot = 'megoldva' WHERE uzenetID = ?`,
+      [uzenetID]
+    );
+    res.json({ message: "Üzenet állapota frissítve." });
+  } catch (err) {
+    console.error("Hiba az üzenet állapotának frissítésekor:", err);
+    res
+      .status(500)
+      .json({ error: "Hiba történt az üzenet állapotának frissítésekor." });
+  }
+});
+
+app.post("/api/torolUzenet", async (req, res) => {
+  const { uzenetID } = req.body;
+
+  if (!uzenetID) {
+    return res.status(400).json({ error: "Hiányzó üzenetID." });
+  }
+
+  try {
+    await pool.execute(`DELETE FROM uzenetek WHERE uzenetID = ?`, [uzenetID]);
+    res.json({ message: "Üzenet törölve." });
+  } catch (err) {
+    console.error("Hiba az üzenet törlésekor:", err);
+    res.status(500).json({ error: "Hiba történt az üzenet törlésekor." });
+  }
+});
 
 // Indítsuk el a szervert
 const PORT = process.env.PORT || 3000;
