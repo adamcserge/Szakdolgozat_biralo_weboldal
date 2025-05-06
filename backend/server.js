@@ -128,7 +128,7 @@ app.post("/api/hallgato", (req, res) => {
       console.error("Hiba:", err);
       return res.status(500).json({ error: "Adatbevitel sikertelen" });
     }
-    res.json({ message: "Sikeres adatbevitel", result });
+    res.json({ message: "Hallgató sikeresen feltöltve", result });
   });
 });
 
@@ -799,7 +799,13 @@ app.get("/api/konzulens-temak", (req, res) => {
   const konzulensID = req.session.user.rvID;
 
   const sql = `
-    SELECT t.temaID, t.temaCim, t.biraloID, t.biralva
+    SELECT t.temaID, t.temaCim, t.biraloID, t.biralva,
+      EXISTS (
+        SELECT 1 FROM dokumentumok d WHERE d.temaID = t.temaID AND d.tipus = 1
+      ) AS temakiiroLapFeltoltve,
+      EXISTS (
+        SELECT 1 FROM dokumentumok d WHERE d.temaID = t.temaID AND d.tipus = 2
+      ) AS szakdolgozatFeltoltve
     FROM tema t
     INNER JOIN konzulens k ON t.temaID = k.temaID
     WHERE k.konzulensID = ?

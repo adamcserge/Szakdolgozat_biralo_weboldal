@@ -108,8 +108,7 @@ body::after {
   }
 
   input,
-  select,
-  button {
+  select {
     width: 100%;
   }
 }

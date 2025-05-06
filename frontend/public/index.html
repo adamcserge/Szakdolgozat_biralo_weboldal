@@ -28,21 +28,34 @@
               <li class="tema-sor">
                 <span class="tema-cim">{{ tema.temaCim }}</span>
 
+                <!-- Témakiíró lap feltöltése gomb -->
+                <button
+                  v-if="!tema.temakiiroLapFeltoltve"
+                  @click="feltoltDokumentum(tema.temaID, 1)"
+                >
+                  Témakiíró lap feltöltése
+                </button>
+
+                <!-- Szakdolgozat feltöltése gomb -->
+                <button
+                  v-if="!tema.szakdolgozatFeltoltve"
+                  @click="feltoltDokumentum(tema.temaID, 2)"
+                >
+                  Szakdolgozat feltöltése
+                </button>
+
                 <!-- Bíráló felkérése gomb -->
                 <button
-                  v-if="!tema.biraloID && tema.biralva !== 1"
+                  v-if="tema.temakiiroLapFeltoltve && tema.szakdolgozatFeltoltve && tema.biralva === 0"
                   @click="openModal(tema.temaID)"
-                  class="felkeres-gomb"
                 >
                   Bíráló felkérése
                 </button>
-
                 <!-- Felkérés folyamatban szöveg -->
                 <span v-else-if="tema.biralva === 1">Felkérés folyamatban</span>
 
                 <!-- Bírálat elfogadva szöveg -->
                 <span v-else-if="tema.biralva === 2">Bírálat elfogadva</span>
-
                 <!-- Bírálat letöltése gomb -->
                 <button
                   v-else-if="tema.biralva === 3"
@@ -119,10 +132,14 @@
         <!-- Téma feltöltése -->
         <h2>Új téma feltöltése</h2>
         <form @submit.prevent="submitTema">
+         <div> 
           <input v-model="ujTema.temaCim" placeholder="Téma címe" required />
-
+        </div>
+<div>
           <select v-model="ujTema.kapcsolodoTemaID">
             <option disabled value="">Kapcsolódó téma (nem kötelező)</option>
+          </div>
+          <div>
             <option
               v-for="tema in temak"
               :value="tema.temaID"
@@ -131,14 +148,17 @@
               {{ tema.temaCim }}
             </option>
           </select>
-
+</div>
+<div>
           <select v-model="ujTema.hallgatoID" required>
             <option disabled value="">Válassz hallgatót</option>
             <option v-for="hallgato in hallgatok" :value="hallgato.hallgatoID">
               {{ hallgato.hallgatoNEV }} ({{ hallgato.hallgatoNK }})
-            </option>
-          </select>
-
+            </option></select
+          ><!-- Hallgató hozzáadása gomb -->
+          <button @click="showHallgatoModal = true" title="Új hallgató felvétele"><b>+</b></button>
+</div>
+<div>
           <!-- További konzulens kiválasztása -->
           <select v-model="ujTema.extraKonzulensID">
             <option disabled value="">
@@ -151,7 +171,7 @@
             >
               {{ resztvevo.rvNEV }} ({{ resztvevo.rvEmail }})
             </option>
-          </select>
+          </select></div>
 
           <div>
             <h3 @click="toggleSzervezetValasztas" style="cursor: pointer">
@@ -175,6 +195,40 @@
           <button type="submit">Téma beküldése</button>
         </form>
         <p v-if="uzenet">{{ uzenet }}</p>
+
+        <!-- Hallgató hozzáadása modal -->
+        <div v-if="showHallgatoModal" class="modal">
+          <h3>Új hallgató hozzáadása</h3>
+          <form @submit.prevent="addHallgato">
+            <input
+              placeholder="Hallgató neve"
+              id="hallgatoNev"
+              v-model="ujHallgato.nev"
+              required
+            />
+
+            <input
+              placeholder="Neptun kódja"
+              id="hallgatoNeptun"
+              v-model="ujHallgato.neptun"
+              required
+            />
+
+            <input
+              placeholder="Email címe"
+              id="hallgatoEmail"
+              v-model="ujHallgato.email"
+              type="email"
+              required
+            />
+
+            <button type="submit">Hozzáadás</button>
+            <button type="button" @click="showHallgatoModal = false">
+              Mégse
+            </button>
+          </form>
+          <p v-if="hallgatoUzenet">{{ hallgatoUzenet }}</p>
+        </div>
 
         <!-- Bírálóként hozzárendelt témák -->
         <h2>Bírálóként hozzárendelt témák</h2>
@@ -301,6 +355,13 @@
             kivalasztottTemaCim: null, // Téma címének tárolása
             showBiralatModal: false,
             biralatUploadMessage: "",
+            showHallgatoModal: false,
+            ujHallgato: {
+              nev: "",
+              neptun: "",
+              email: "",
+            },
+            hallgatoUzenet: "",
           };
         },
         methods: {
@@ -765,6 +826,35 @@
               alert("Hiba történt a bírálat letöltésekor.");
             }
           },
+          async feltoltDokumentum(temaID, tipus) {
+            const fileInput = document.createElement("input");
+            fileInput.type = "file";
+            fileInput.accept = ".pdf,.doc,.docx"; // Csak bizonyos fájltípusokat engedélyezünk
+            fileInput.onchange = async (event) => {
+              const file = event.target.files[0];
+              if (!file) return;
+
+              const formData = new FormData();
+              formData.append("file", file);
+              formData.append("temaID", temaID);
+              formData.append("tipus", tipus);
+
+              try {
+                const res = await fetch("http://localhost:3000/api/feltoltes", {
+                  method: "POST",
+                  body: formData,
+                  credentials: "include",
+                });
+                if (!res.ok) throw new Error("Hiba a fájl feltöltésekor.");
+                alert("Fájl sikeresen feltöltve!");
+                this.fetchKonzulensTemak(); // Témák újratöltése
+              } catch (err) {
+                console.error("Hiba a fájl feltöltésekor:", err);
+                alert("Hiba történt a fájl feltöltésekor.");
+              }
+            };
+            fileInput.click();
+          },
           felkeresBiralo() {
             if (!this.kivalasztottBiralo) {
               alert("Kérlek válassz ki egy bírálót!");
@@ -805,6 +895,29 @@
                 console.error("Hiba a bíráló felkérésekor:", err);
                 alert(err.message || "Hiba történt a bíráló felkérésekor.");
               });
+          },
+          async addHallgato() {
+            try {
+              const res = await fetch("http://localhost:3000/api/hallgato", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  hallgatoNEV: this.ujHallgato.nev,
+                  hallgatoNK: this.ujHallgato.neptun,
+                  hallgatoEMAIL: this.ujHallgato.email,
+                }),
+              });
+
+              if (!res.ok) throw new Error(`Hiba: ${res.status}`);
+              const data = await res.json();
+              this.hallgatoUzenet = data.message;
+              this.ujHallgato = { nev: "", neptun: "", email: "" }; // Mezők ürítése
+              this.showHallgatoModal = false; // Modális ablak bezárása
+              this.loadHallgatok(); // Hallgatók újratöltése
+            } catch (err) {
+              console.error("Hiba a hallgató hozzáadásakor:", err);
+              this.hallgatoUzenet = "Hiba történt a hallgató hozzáadásakor.";
+            }
           },
           refreshData() {
             if (this.auth) {
