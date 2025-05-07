@@ -764,6 +764,35 @@ app.get("/api/resztvevok", async (req, res) => {
   }
 });
 
+// Résztvevők lekérdezése id alapján
+app.get("/api/resztvevo/:kivalasztottID", async (req, res) => {
+  const kivalasztottID = req.params.kivalasztottID;
+
+  try {
+    const [rows] = await pool.execute(
+      "SELECT rvID, rvNEV, rvEmail, rvFelhasznalonev, rvVegzetseg FROM resztvevok WHERE rvID = ? LIMIT 1",
+      [kivalasztottID]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Nincs ilyen résztvevő." });
+    }
+    const vegzetsegSzoveg = {
+      1: "BSc",
+      2: "MSc",
+      3: "PhD",
+    };
+
+    // A végzettség számát szöveggé konvertáljuk
+    rows[0].rvVegzetseg = vegzetsegSzoveg[rows[0].rvVegzetseg] || "Ismeretlen";
+
+    res.json(rows[0]); // egyetlen résztvevő adata
+  } catch (err) {
+    console.error("Hiba a résztvevő lekérdezésekor:", err);
+    res.status(500).json({ error: "Nem sikerült a résztvevő lekérése." });
+  }
+});
+
 // Bíráló témák lekérdezése
 app.get("/api/biralo-temak", (req, res) => {
   if (!req.session.user) {
@@ -1086,6 +1115,30 @@ app.post("/api/addSzervezet", async (req, res) => {
   } catch (err) {
     console.error("Hiba a szervezet hozzáadásakor:", err);
     res.status(500).json({ error: "Hiba történt a szervezet hozzáadásakor." });
+  }
+});
+
+//Résztvevő adatainak frissítése
+app.put("/api/updateResztvevo/:id", async (req, res) => {
+  const id = req.params.id;
+  const updates = req.body;
+
+  if (!Object.keys(updates).length) {
+    return res.status(400).json({ message: "Nincs adat a frissítéshez." });
+  }
+
+  const keys = Object.keys(updates);
+  const values = Object.values(updates);
+  const setClause = keys.map((key) => `${key} = ?`).join(", ");
+
+  const sql = `UPDATE resztvevok SET ${setClause} WHERE rvID = ?`;
+
+  try {
+    await pool.query(sql, [...values, id]);
+    res.json({ message: "Sikeres frissítés." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Hiba történt a frissítés során." });
   }
 });
 

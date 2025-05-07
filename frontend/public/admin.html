@@ -155,6 +155,55 @@
           </button>
           <button @click="showSzervezetModal = false">Bezárás</button>
         </div>
+        <!--Résztvevők adatfrissítése-->
+        <div>
+          <button @click="showAdatModal=true">
+            Résztvevő adatainak módosítása
+          </button>
+        </div>
+        <!-- Résztvevő kiválasztása -->
+        <div v-if="showAdatModal" class="modal">
+          <h3>Résztvevő adatainak módosítása</h3>
+
+          <label for="resztvevoSelect">Válassz résztvevőt:</label>
+          <select v-model="kivalasztottID" @change="betoltAdatok">
+            <option value="">-- Válassz --</option>
+            <option v-for="r in resztvevok" :key="r.rvID" :value="r.rvID">
+              {{ r.rvNEV }} ({{ r.rvEmail }})
+            </option>
+          </select>
+
+          <div v-if="kivalasztottAdatok">
+            <h3>Eredeti adatok:</h3>
+            <ul>
+              <li>Név: {{ kivalasztottAdatok.rvNEV }}</li>
+              <li>Email: {{ kivalasztottAdatok.rvEmail }}</li>
+              <li>Felhasználónév: {{ kivalasztottAdatok.rvFelhasznalonev }}</li>
+              <li>
+                Végzettség: {{
+                getVegzetsegSzoveg(kivalasztottAdatok.rvVegzetseg) }}
+              </li>
+            </ul>
+
+            <h3>Új adatok (csak amit módosítani szeretnél):</h3>
+            <input v-model="ujAdatok.rvNEV" placeholder="Új név" /><br />
+            <input v-model="ujAdatok.rvEmail" placeholder="Új email" /><br />
+            <input
+              v-model="ujAdatok.rvFelhasznalonev"
+              placeholder="Új felhasználónév"
+            /><br />
+            <select v-model="ujAdatok.rvVegzetseg" id="tesztSelect">
+              <option disabled value="">Válassz végzettséget</option>
+              <option value="1">BSc</option>
+              <option value="2">MSc</option>
+              <option value="3">PhD</option>
+            </select>
+            <br />
+
+            <button @click="mentes">Mentés</button>
+          </div>
+          <button @click="showAdatModal = false">Bezárás</button>
+        </div>
       </div>
     </div>
 
@@ -219,10 +268,20 @@
             showModal: false, // Modális ablak megjelenítése
             showAdminModal: false, // Adminok modális ablak megjelenítése
             showSzervezetModal: false, // Szervezeti egység modális ablak megjelenítése
+            showAdatModal: false, // Résztvevő adatainak módosítása modális ablak megjelenítése
             szervezetID: null, // Szervezeti egység azonosítója
             searchQuery: "",
             adminSearchQuery: "",
             isSzervezetValasztasOpen: false, // Szervezet választás állapota
+            resztvevok: [],
+            kivalasztottID: "",
+            kivalasztottAdatok: null,
+            ujAdatok: {
+              rvNEV: "",
+              rvEmail: "",
+              rvFelhasznalonev: "",
+              rvVegzetseg: "",
+            },
           };
         },
         computed: {
@@ -491,6 +550,15 @@
             };
             return findSzervezet(this.szervezetek, id) || "Nincs kiválasztva";
           },
+
+          getVegzetsegSzoveg(vegzetseg) {
+            const vegzetsegSzoveg = {
+              1: "BSc",
+              2: "MSc",
+              3: "PhD",
+            };
+            return vegzetsegSzoveg[vegzetseg] || "Ismeretlen";
+          },
           refreshData() {
             if (this.auth) {
               this.fetchNemAdminok();
@@ -502,6 +570,65 @@
               this.adminok = [];
               this.uzenetek = []; // Üzenetek törlése kijelentkezés után
               this.szervezetek = []; // Szervezetek törlése kijelentkezés után
+            }
+          },
+          //////// Résztvevők adatainak módosítása
+          async betoltResztvevok() {
+            try {
+              const res = await axios.get(
+                "http://localhost:3000/api/resztvevok",
+                { withCredentials: true }
+              );
+              this.resztvevok = res.data;
+            } catch (err) {
+              console.error("Hiba a résztvevők betöltésekor:", err);
+            }
+          },
+          async betoltAdatok() {
+            if (!this.kivalasztottID) return;
+            try {
+              const res = await axios.get(
+                `http://localhost:3000/api/resztvevo/${this.kivalasztottID}`,
+                { withCredentials: true }
+              );
+              this.kivalasztottAdatok = res.data;
+              this.ujAdatok = {
+                rvNEV: "",
+                rvEmail: "",
+                rvFelhasznalonev: "",
+                rvVegzetseg: "",
+              };
+            } catch (err) {
+              console.error("Hiba az adatok betöltésekor:", err);
+            }
+          },
+          async mentes() {
+            const modositott = {};
+            for (const key in this.ujAdatok) {
+              const val = this.ujAdatok[key];
+              if (val !== "" && val !== null) {
+                modositott[key] = val;
+              }
+            }
+
+            if (Object.keys(modositott).length === 0) {
+              alert("Nem adtál meg módosítandó mezőt.");
+              return;
+            }
+
+            try {
+              await axios.put(
+                `http://localhost:3000/api/updateResztvevo/${this.kivalasztottID}`,
+                modositott,
+                {
+                  withCredentials: true,
+                }
+              );
+              alert("Sikeres módosítás!");
+              this.betoltAdatok();
+            } catch (err) {
+              console.error("Hiba a frissítéskor:", err);
+              alert("Hiba történt a módosítás során.");
             }
           },
         },
@@ -518,6 +645,7 @@
           this.fetchAdminok(); // Admin résztvevők lekérése
           this.fetchUzenetek(); // Üzenetek lekérése
           this.fetchSzervezetek(); // Szervezetek lekérése
+          this.betoltResztvevok(); // Résztvevők lekérése
           window.addEventListener("message", this.messageListener); // Üzenet figyelése
         },
       });

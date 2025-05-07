@@ -650,6 +650,7 @@
             };
             return findSzervezet(this.szervezetek, id) || "Nincs kiválasztva";
           },
+          
           openModal(temaID) {
             console.log("Kiválasztott téma ID:", temaID); // Ellenőrzés
             const tema = this.konzulensTemak.find((t) => t.temaID === temaID);
