@@ -908,7 +908,7 @@
                     // Ha a státuszkód 400, akkor a bíráló már fel van kérve
                     return res.json().then((data) => {
                       throw new Error(
-                        data.error || "Ez a bíráló már fel van kérve."
+                        data.error || "Ez a bíráló már egyszer fel volt kérve."
                       );
                     });
                   }

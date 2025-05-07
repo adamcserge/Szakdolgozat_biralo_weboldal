@@ -1058,6 +1058,37 @@ app.post("/api/torolUzenet", async (req, res) => {
   }
 });
 
+app.get("/api/szervezetek", async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT szervezetID, szervezetNEV, felettesID FROM szervezet`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Hiba a szervezetek lekérésekor:", err);
+    res.status(500).json({ error: "Nem sikerült a szervezetek lekérése." });
+  }
+});
+
+app.post("/api/addSzervezet", async (req, res) => {
+  const { selectedSzervezet, szervezetNev } = req.body;
+
+  if (!szervezetNev) {
+    return res.status(400).json({ error: "Hiányzó szervezet név." });
+  }
+
+  try {
+    await pool.execute(
+      `INSERT INTO szervezet (szervezetNEV, felettesID) VALUES (?, ?)`,
+      [szervezetNev, selectedSzervezet || null]
+    );
+    res.json({ message: "Szervezet sikeresen hozzáadva." });
+  } catch (err) {
+    console.error("Hiba a szervezet hozzáadásakor:", err);
+    res.status(500).json({ error: "Hiba történt a szervezet hozzáadásakor." });
+  }
+});
+
 // Indítsuk el a szervert
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Backend fut a ${PORT} porton`));
