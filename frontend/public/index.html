@@ -47,9 +47,17 @@
 
 
         <p>Üdvözlöm az oldalon, {{ user.rvFelhasznalonev }}!</p>
-        <div><h2>Konzultált témái</h2></div>
+        <div><h2>Konzultált témái</h2>
+        <input
+                type="text"
+                v-model="TemakSearchQuery"
+                placeholder="Keresés cím alapján..."
+                class="search-input"
+              />
+
+              <div class="scrollable-list">
         <template>
-          <div v-for="tema in konzulensTemak" :key="tema.temaID">
+          <div v-if="filteredTemak.length > 0" v-for="tema in filteredTemak" :key="tema.temaID">
             <ul>
               <li class="tema-sor">
                 <span class="tema-cim">{{ tema.temaCim }}</span>
@@ -93,6 +101,10 @@
               </li>
             </ul>
           </div>
+          <div v-if="filteredTemak.length === 0"><b>Nincs találat a címek között.</b></div>
+        </template>
+        </div>
+        </div>
 
           <div v-if="showModal" class="modal">
             <h3>Válassz bírálót</h3>
@@ -112,7 +124,7 @@
           </div>
         </template>
 
-        <!-- Fájl feltöltés -->
+        <!-- Fájl feltöltése -->
         <h2>Fájl feltöltése</h2>
         <input type="file" @change="handleFileUpload" />
         <select v-model="selectedType" placeholder="Dokumentum típusa">
@@ -218,7 +230,7 @@
               }}
             </p>
           </div>
-          <button type="submit">Téma beküldése</button>
+          <button type="submit">Téma felvétele</button>
         </form>
         <p v-if="uzenet">{{ uzenet }}</p>
 
@@ -262,7 +274,7 @@
           <li v-for="tema in biraloTemak" :key="tema.temaID">
             {{ tema.temaCim }}
 
-            <button @click="megtekintDokumentum(tema.temaID)">
+            <button @click="megtekintTemakiirolap(tema.temaID)">
               Témakiíró lap megtekintése
             </button>
 
@@ -274,6 +286,7 @@
 
             <!-- Bírálat feltöltése gomb -->
             <div v-else-if="tema.biralva === 2">
+              <button @click="openDokumentModal(tema.temaID)">Kapcsolódó dokumentumok</button>
               <button @click="feltoltBiralat(tema.temaID)">
                 Bírálat feltöltése
               </button>
@@ -282,9 +295,24 @@
             <!-- Bírálat feltöltve -->
             <div v-else-if="tema.biralva === 3">
               <p>Bírálat feltöltve</p>
+              <button @click="openDokumentModal(tema.temaID)">Kapcsolódó dokumentumok</button>
             </div>
           </li>
         </ul>
+        <!-- Kapcsolódó dokumentumok modal -->
+        <div v-if="showDokumentModal" class="modal">
+          <h3>Kapcsolódó dokumentumok</h3>
+          <div><b>Téma:</b> {{ kivalasztottTemaCimDok}}</div>
+          <ul>
+            <li v-for="dokumentum in temaDokumnetumok":key="dokumentum.dokID">
+              
+              <strong>Fájl:</strong> {{ dokumentum.eredeti_nev }}<br />
+              <strong>Típus:</strong> {{ getDokumentumTipus(dokumentum.tipus) }}
+              <button @click="downloadFile(dokumentum.eleres)">Letöltés</button>
+            </li>
+          </ul>
+          <button @click="showDokumentModal = false">Bezárás</button>
+
 
         <!-- Bírálat feltöltése modal -->
         <div v-if="showBiralatModal" class="modal">
@@ -375,14 +403,18 @@
             biraloTemak: [], // Bírálóhoz tartozó témák
             resztvevok: [], // Résztvevők listája
             biralok: [],
+            temaDokumnetumok: [], // Témával kapcsolatos dokumentumok
             showModal: false,
             kivalasztottTemaID: null,
             kivalasztottBiralo: null,
             kivalasztottTemaCim: null, // Téma címének tárolása
+            kivalasztottTemaIDdok: null,
+            kivalasztottTemaCimDok: null,
             showBiralatModal: false,
             biralatUploadMessage: "",
             showHallgatoModal: false,
             showUzenetModal: false,
+            showDokumentModal: false,
             ujHallgato: {
               nev: "",
               neptun: "",
@@ -390,8 +422,17 @@
             },
             hallgatoUzenet: "",
             tipus: "",
-      tartalom: ""
+            tartalom: "",
+            TemakSearchQuery: "",
           };
+        },
+        computed: {
+          filteredTemak() {
+            const query = this.TemakSearchQuery.toLowerCase();
+            return this.konzulensTemak.filter((tema) =>
+              tema.temaCim.toLowerCase().includes(query)
+            );
+          },
         },
         methods: {
           async checkLoginStatus() {
@@ -428,8 +469,8 @@
             }, 500);
           }, 
           OpenAdnimPage() {
-    window.location.href = "admin.html";
-  },
+              window.location.href = "admin.html";
+          },
 
           async logout() {
             try {
@@ -591,6 +632,8 @@
               };
               this.isSzervezetValasztasOpen = false; // Bezárja a szervezetválasztót
               this.fetchTemak(); // Témák frissítése
+              this.fetchKonzulensTemak(); // Konzulens témák frissítése
+              alert("Téma sikeresen felvéve.");
             } catch (err) {
               console.error("Téma mentési hiba:", err);
               this.temaUzenet = "Hiba történt a mentés során.";
@@ -713,10 +756,10 @@
               console.error("Hiba a konzulens témák lekérésekor:", err);
             }
           },
-          async megtekintDokumentum(temaID) {
+          async megtekintTemakiirolap(temaID) {
             try {
               const res = await fetch(
-                `http://localhost:3000/api/tema-dokumentumok/${temaID}`
+                `http://localhost:3000/api/temakiirolap/${temaID}`
               );
               if (!res.ok) {
                 throw new Error("Hiba a dokumentumok lekérésekor.");
@@ -735,6 +778,42 @@
             } catch (err) {
               console.error("Hiba a dokumentum megtekintésekor:", err);
               alert("Hiba történt a dokumentum megtekintésekor.");
+            }
+          },
+          async fetchTemaDokumentumok(temaID) {
+            try {
+              const res = await fetch(
+                `http://localhost:3000/api/tema-dokumentumok/${temaID}`,
+                {
+                  credentials: "include", // Küldi a session cookie-t
+                }
+              );
+              if (!res.ok) throw new Error("Hiba a dokumentumok lekérésekor.");
+              this.temaDokumnetumok = await res.json(); // Dokumentumok mentése
+            } catch (err) {
+              console.error("Hiba a dokumentumok lekérésekor:", err);
+              alert("Hiba történt a dokumentumok lekérésekor.");
+            }
+          },
+          async getTemaCimByID(kivalasztottTemaIDdok) {
+            try {
+              const res = await fetch(
+                `http://localhost:3000/api/temacim/${kivalasztottTemaIDdok}`,
+                {
+                  credentials: "include", // Küldi a session cookie-t
+                }
+              );
+
+              if (!res.ok) {
+                throw new Error("Hiba a téma címének lekérésekor.");
+              }
+
+              const tema = await res.json();
+              return tema.temaCim; // Visszaadjuk a téma címét
+            } catch (err) {
+              console.error("Hiba a téma címének lekérésekor:", err);
+              alert("Hiba történt a téma címének lekérésekor.");
+              return null; // Hiba esetén `null`-t adunk vissza
             }
           },
           async elfogadFelkeres(temaID) {
@@ -1009,6 +1088,16 @@
         alert("Nem sikerült az üzenet küldése.");
       }
     },
+    async openDokumentModal(temaID) {
+  this.kivalasztottTemaIDdok = temaID;
+  this.showDokumentModal = true;
+  this.fetchTemaDokumentumok(temaID); // feltöltés
+
+  // Itt lekéred a címét is és elmented
+  const cim = await this.getTemaCimByID(temaID);
+  this.kivalasztottTemaCimDok = cim;
+}
+
         },
         created() {
           this.checkLoginStatus();

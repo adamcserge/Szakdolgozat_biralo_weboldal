@@ -777,14 +777,14 @@ app.get("/api/resztvevo/:kivalasztottID", async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ error: "Nincs ilyen résztvevő." });
     }
-    const vegzetsegSzoveg = {
+    /* const vegzetsegSzoveg = {
       1: "BSc",
       2: "MSc",
       3: "PhD",
     };
 
     // A végzettség számát szöveggé konvertáljuk
-    rows[0].rvVegzetseg = vegzetsegSzoveg[rows[0].rvVegzetseg] || "Ismeretlen";
+    rows[0].rvVegzetseg = vegzetsegSzoveg[rows[0].rvVegzetseg] || "Ismeretlen";*/
 
     res.json(rows[0]); // egyetlen résztvevő adata
   } catch (err) {
@@ -851,7 +851,7 @@ app.get("/api/konzulens-temak", (req, res) => {
 });
 
 // Téma dokumentumok lekérdezése
-app.get("/api/tema-dokumentumok/:temaID", async (req, res) => {
+app.get("/api/temakiirolap/:temaID", async (req, res) => {
   const temaID = req.params.temaID;
 
   try {
@@ -874,6 +874,51 @@ app.get("/api/tema-dokumentumok/:temaID", async (req, res) => {
     res
       .status(500)
       .json({ error: "Hiba történt a dokumentumok lekérdezésekor." });
+  }
+});
+app.get("/api/tema-dokumentumok/:temaID", async (req, res) => {
+  const temaID = req.params.temaID;
+
+  try {
+    const [rows] = await pool.execute(
+      `SELECT dokID, eredeti_nev, tipus, eleres 
+       FROM dokumentumok 
+       WHERE temaID = ?`,
+      [temaID]
+    );
+
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Nincs dokumentum ehhez a témához." });
+    }
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Hiba a dokumentumok lekérdezésekor:", err);
+    res
+      .status(500)
+      .json({ error: "Hiba történt a dokumentumok lekérdezésekor." });
+  }
+});
+
+app.get("/api/temacim/:temaID", async (req, res) => {
+  const temaID = req.params.temaID;
+
+  try {
+    const [rows] = await pool.execute(
+      `SELECT temaCim FROM tema WHERE temaID = ?`,
+      [temaID]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "A téma nem található." });
+    }
+
+    res.json(rows[0]); // Visszaadjuk a téma címét
+  } catch (err) {
+    console.error("Hiba a téma címének lekérésekor:", err);
+    res.status(500).json({ error: "Hiba történt a téma címének lekérésekor." });
   }
 });
 
