@@ -272,11 +272,12 @@
         <h2>Bírálóként hozzárendelt témák</h2>
         <ul>
           <li v-for="tema in biraloTemak" :key="tema.temaID">
-            {{ tema.temaCim }}
-
+            <div><b>Téma: </b>{{ tema.temaCim }}</div>
+            <div>
             <button @click="megtekintTemakiirolap(tema.temaID)">
               Témakiíró lap megtekintése
             </button>
+          </div>
 
             <!-- Elfogadás és Elutasítás gombok -->
             <div v-if="tema.biralva === 1">
@@ -285,11 +286,29 @@
             </div>
 
             <!-- Bírálat feltöltése gomb -->
-            <div v-else-if="tema.biralva === 2">
+            <!--<div v-else-if="tema.biralva === 2">
               <button @click="openDokumentModal(tema.temaID)">Kapcsolódó dokumentumok</button>
               <button @click="feltoltBiralat(tema.temaID)">
                 Bírálat feltöltése
               </button>
+            </div>-->
+            <div v-else-if="tema.biralva === 2">
+              <div v-if="!tema.titoktartasMasTolt || (tema.titoktartasMasTolt && tema.titoktartasEnTolt)">
+                <!-- Ha nincs más által feltöltve vagy ha van, de én is feltöltöttem -->
+                <button @click="openDokumentModal(tema.temaID)">Kapcsolódó dokumentumok</button>
+                <button @click="feltoltBiralat(tema.temaID)">Bírálat feltöltése</button>
+              </div>
+            
+              <div v-else>
+                <!-- Ha van más által feltöltve, de én még nem töltöttem fel -->
+                <p><strong>Kapcsolódó dokumentumok megtekintéséhez titoktartási nyilatkozat szükséges.</strong></p>
+            <button v-if="tema.titoktartasMasTolt" @click="downloadTitoktartas(tema.temaID)">
+                  Titoktartási nyilatkozat letöltése
+                </button>
+                <button @click="feltoltDokumentum(tema.temaID, 3)">Kitöltött titoktartási nyilatkozat feltöltése</button>
+            
+                
+              </div>
             </div>
 
             <!-- Bírálat feltöltve -->
@@ -780,6 +799,31 @@
               alert("Hiba történt a dokumentum megtekintésekor.");
             }
           },
+         
+          async downloadTitoktartas(temaID) {
+            try {
+              const res = await fetch(
+                `http://localhost:3000/api/titoktartas/${temaID}`
+              );
+              if (!res.ok) {
+                throw new Error("Hiba a dokumentumok lekérésekor.");
+              }
+
+              const dokumentumok = await res.json();
+              if (dokumentumok.length > 0) {
+                const eleres = dokumentumok[0].eleres; // Az első dokumentum elérési útvonala
+                window.open(
+                  `http://localhost:3000/uploads/${eleres}`,
+                  "_blank"
+                ); // Dokumentum megnyitása új lapon
+              } else {
+                alert("Ehhez a témához nincs témakiíró dokumentum.");
+              }
+            } catch (err) {
+              console.error("Hiba a dokumentum megtekintésekor:", err);
+              alert("Hiba történt a dokumentum megtekintésekor.");
+            }
+          },
           async fetchTemaDokumentumok(temaID) {
             try {
               const res = await fetch(
@@ -961,6 +1005,7 @@
                 if (!res.ok) throw new Error("Hiba a fájl feltöltésekor.");
                 alert("Fájl sikeresen feltöltve!");
                 this.fetchKonzulensTemak(); // Témák újratöltése
+                this.fetchBiraloTemak(); // Bíráló témák újratöltése
               } catch (err) {
                 console.error("Hiba a fájl feltöltésekor:", err);
                 alert("Hiba történt a fájl feltöltésekor.");

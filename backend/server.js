@@ -794,7 +794,7 @@ app.get("/api/resztvevo/:kivalasztottID", async (req, res) => {
 });
 
 // Bíráló témák lekérdezése
-app.get("/api/biralo-temak", (req, res) => {
+/*app.get("/api/biralo-temak", (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({ error: "Nem vagy bejelentkezve." });
   }
@@ -810,6 +810,48 @@ app.get("/api/biralo-temak", (req, res) => {
   `;
 
   db.query(sql, [biraloID], (err, results) => {
+    if (err) {
+      console.error("Hiba a bíráló témák lekérdezésekor:", err);
+      res.status(500).json({ error: "Hiba a bíráló témák lekérésekor." });
+    } else {
+      res.json(results);
+    }
+  });
+});*/
+
+// Bíráló témák lekérdezése
+app.get("/api/biralo-temak", (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: "Nem vagy bejelentkezve." });
+  }
+
+  const biraloID = req.session.user.rvID;
+
+  const sql = `
+    SELECT 
+      t.temaID, 
+      t.temaCim, 
+      t.biralva,
+
+      -- 1. Más által feltöltött 3-as típusú dokumentum
+      EXISTS (
+        SELECT 1 FROM dokumentumok d 
+        WHERE d.temaID = t.temaID AND d.tipus = 3 AND CAST(d.feltolto AS UNSIGNED) != ?
+      ) AS titoktartasMasTolt,
+
+      -- 2. Saját feltöltés
+      EXISTS (
+        SELECT 1 FROM dokumentumok d 
+        WHERE d.temaID = t.temaID AND d.tipus = 3 AND CAST(d.feltolto AS UNSIGNED) = ?
+      ) AS titoktartasEnTolt
+
+    FROM tema t
+    INNER JOIN biralo b ON t.temaID = b.BtemaID
+    WHERE b.BbiraloID = ?
+      AND b.allapot IN ('felkeres', 'elfogadva');
+  `;
+
+  db.query(sql, [biraloID, biraloID, biraloID], (err, results) => {
     if (err) {
       console.error("Hiba a bíráló témák lekérdezésekor:", err);
       res.status(500).json({ error: "Hiba a bíráló témák lekérésekor." });
@@ -850,7 +892,7 @@ app.get("/api/konzulens-temak", (req, res) => {
   });
 });
 
-// Téma dokumentumok lekérdezése
+// Témakiirólap dokumentumok lekérdezése
 app.get("/api/temakiirolap/:temaID", async (req, res) => {
   const temaID = req.params.temaID;
 
@@ -858,7 +900,7 @@ app.get("/api/temakiirolap/:temaID", async (req, res) => {
     const [rows] = await pool.execute(
       `SELECT dokID, eredeti_nev, eleres 
        FROM dokumentumok 
-       WHERE temaID = ? AND tipus = 1`, // Csak a témakiíró dokumentumokat kérjük le
+       WHERE temaID = ? AND tipus = 1 LIMIT 1`, // Csak a témakiíró dokumentumot kérjük le
       [temaID]
     );
 
@@ -876,6 +918,35 @@ app.get("/api/temakiirolap/:temaID", async (req, res) => {
       .json({ error: "Hiba történt a dokumentumok lekérdezésekor." });
   }
 });
+
+// Bíralat dokumentumok lekérdezése
+app.get("/api/titoktartas/:temaID", async (req, res) => {
+  const temaID = req.params.temaID;
+
+  try {
+    const [rows] = await pool.execute(
+      `SELECT dokID, eredeti_nev, eleres 
+       FROM dokumentumok 
+       WHERE temaID = ? AND tipus = 3 LIMIT 1`, // Csak a bíráló dokumentumot kérjük le
+      [temaID]
+    );
+
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Nincs témakiíró dokumentum ehhez a témához." });
+    }
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Hiba a dokumentumok lekérdezésekor:", err);
+    res
+      .status(500)
+      .json({ error: "Hiba történt a dokumentumok lekérdezésekor." });
+  }
+});
+
+// Témával kapcsolatos dokumentumok lekérdezése
 app.get("/api/tema-dokumentumok/:temaID", async (req, res) => {
   const temaID = req.params.temaID;
 
@@ -902,6 +973,7 @@ app.get("/api/tema-dokumentumok/:temaID", async (req, res) => {
   }
 });
 
+//Téma cím lekérdezése ID alapján
 app.get("/api/temacim/:temaID", async (req, res) => {
   const temaID = req.params.temaID;
 
