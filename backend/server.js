@@ -151,7 +151,7 @@ app.post("/api/login", async (req, res) => {
   if (users.length === 0) {
     return res.status(401).send("Hibás e-mail vagy jelszó");
   }
-  // Bejelentkezés sikeres
+  // Bejelentkezés sikeres, elindítja a session-t
   req.session.user = users[0]; // Felhasználó mentése a session-be
   console.log("Bejelentkezett felhasználó:", req.session.user); // Naplózás
   res.json({ message: "Sikeres bejelentkezés!" });
@@ -1232,6 +1232,27 @@ app.post("/api/addSzervezet", async (req, res) => {
   } catch (err) {
     console.error("Hiba a szervezet hozzáadásakor:", err);
     res.status(500).json({ error: "Hiba történt a szervezet hozzáadásakor." });
+  }
+});
+app.get("/api/sajat-uzenetek", async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: "Nem vagy bejelentkezve." });
+  }
+
+  const felhasznaloID = req.session.user.rvID;
+
+  try {
+    const [rows] = await pool.execute(
+      `SELECT tartalom, allapot, valasz 
+       FROM uzenetek 
+       WHERE rvID = ?`,
+      [felhasznaloID]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Hiba az üzenetek lekérésekor:", err);
+    res.status(500).json({ error: "Hiba történt az üzenetek lekérésekor." });
   }
 });
 

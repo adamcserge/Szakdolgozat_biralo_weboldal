@@ -45,8 +45,22 @@
         <button @click="showUzenetModal = false">Bezárás</button>        
           </div>  
 
+       
 
         <p>Üdvözlöm az oldalon, {{ user.rvFelhasznalonev }}!</p>
+         <div >
+          <h3>Elküldött üzeneteid</h3>
+          <ul>
+            <li v-for="uzenet in uzenetek" :key="uzenet.id">
+              <strong>Üzenet:</strong> {{ uzenet.tartalom }}<br />
+              <strong>Állapot:</strong> {{ uzenet.allapot }}<br />
+              <strong>Válasz:</strong>
+              <p v-if="uzenet.valasz === null || uzenet.valasz === ''">Nincs még válasz.</p>
+              <p v-else>{{ uzenet.valasz }}</p>
+            </li>
+          </ul>
+          <p v-if="uzenetek.length === 0">Nincs elküldött üzeneted.</p>
+        </div>
         <div><h2>Konzultált témái</h2>
         <input
                 type="text"
@@ -443,6 +457,7 @@
             tipus: "",
             tartalom: "",
             TemakSearchQuery: "",
+            uzenetek: [],
           };
         },
         computed: {
@@ -1085,6 +1100,8 @@
               this.loadHallgatok(); // Hallgatók betöltése
               this.loadResztvevok(); // Résztvevők betöltése
               this.fetchSzervezetek(); // Szervezetek betöltése
+              this.fetchSajatUzenetek(); // Üzenetek betöltése
+
             } else {
               // Ha nincs bejelentkezve, töröljük az adatokat
               this.temak = [];
@@ -1155,6 +1172,17 @@ async openBiraloModal(temaID) {
   } catch (err) {
     console.error("Hiba a téma címének lekérésekor:", err);
   }
+},
+async fetchSajatUzenetek() {
+  try {
+    const res = await fetch("http://localhost:3000/api/sajat-uzenetek", {
+      credentials: "include", // Küldi a session cookie-t
+    });
+    if (!res.ok) throw new Error("Hiba az üzenetek lekérésekor.");
+    this.uzenetek = await res.json();
+  } catch (err) {
+    console.error("Hiba az üzenetek lekérésekor:", err);
+  }
 }
 
         },
@@ -1166,6 +1194,7 @@ async openBiraloModal(temaID) {
           this.loadResztvevok();
           this.fetchBiraloTemak(); // Bíráló témák betöltése
           this.fetchKonzulensTemak(); // Konzulens témák betöltése
+          this.fetchSajatUzenetek(); // Üzenetek betöltése
           window.addEventListener("message", this.messageListener);
         },
 
