@@ -89,7 +89,7 @@
                 <span v-else-if="tema.biralva === 1">Felkérés folyamatban</span>
 
                 <!-- Bírálat elfogadva szöveg -->
-                <span v-else-if="tema.biralva === 2">Bírálat elfogadva</span>
+                <span v-else-if="tema.biralva === 2">Bírálati felkérés elfogadva</span>
                 <!-- Bírálat letöltése gomb -->
                 <button
                   v-else-if="tema.biralva === 3"
@@ -296,7 +296,7 @@
               <div v-if="!tema.titoktartasMasTolt || (tema.titoktartasMasTolt && tema.titoktartasEnTolt)">
                 <!-- Ha nincs más által feltöltve vagy ha van, de én is feltöltöttem -->
                 <button @click="openDokumentModal(tema.temaID)">Kapcsolódó dokumentumok</button>
-                <button @click="feltoltBiralat(tema.temaID)">Bírálat feltöltése</button>
+                <button @click="openBiraloModal(tema.temaID)">Bírálat feltöltése</button>
               </div>
             
               <div v-else>
@@ -331,7 +331,7 @@
             </li>
           </ul>
           <button @click="showDokumentModal = false">Bezárás</button>
-
+        </div>
 
         <!-- Bírálat feltöltése modal -->
         <div v-if="showBiralatModal" class="modal">
@@ -1141,6 +1141,20 @@
   // Itt lekéred a címét is és elmented
   const cim = await this.getTemaCimByID(temaID);
   this.kivalasztottTemaCimDok = cim;
+},
+async openBiraloModal(temaID) {
+  console.log("openBiraloModal meghívva, temaID:", temaID);
+  this.kivalasztottTemaID = temaID;
+  this.showBiralatModal = true;
+  console.log("showBiralatModal állapota:", this.showBiralatModal);
+
+  try {
+    const cim = await this.getTemaCimByID(temaID);
+    this.kivalasztottTemaCim = cim;
+    console.log("Lekért téma cím:", cim);
+  } catch (err) {
+    console.error("Hiba a téma címének lekérésekor:", err);
+  }
 }
 
         },
