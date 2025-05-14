@@ -751,6 +751,86 @@ app.post("/api/feltolt-biralat", upload.single("file"), async (req, res) => {
   }
 });
 
+app.post("/szabad-biralo", async (req, res) => {
+  const { temaID } = req.body;
+
+  if (!temaID) {
+    return res.status(400).json({ error: "Hiányzó témaID." });
+  }
+
+  try {
+    // Frissítjük a `szabadBiralat` mezőt 1-re
+    await pool.execute(
+      `UPDATE tema SET szabadBiralat = 1, biralva = 1  WHERE temaID = ?`,
+      [temaID]
+    );
+
+    res.json({ message: "A téma sikeresen bírálatra bocsájtva!" });
+  } catch (err) {
+    console.error("Hiba a téma bírálatra bocsájtásakor:", err);
+    res
+      .status(500)
+      .json({ error: "Hiba történt a téma bírálatra bocsájtásakor." });
+  }
+});
+
+//bírálatra bocsájtott témák lekérdezése
+app.get("/api/szabad-biralatok", async (req, res) => {
+  const biraloID = req.session.user?.rvID; // A bejelentkezett bíráló ID-ja
+
+  if (!biraloID) {
+    return res.status(401).json({ error: "Nem vagy bejelentkezve." });
+  }
+
+  try {
+    const [rows] = await pool.execute(
+      `SELECT t.temaID, t.temaCim 
+       FROM tema t
+       WHERE t.szabadBiralat = 1 
+         AND t.biraloID IS NULL
+         AND t.temaID NOT IN (
+           SELECT temaID 
+           FROM konzulens 
+           WHERE konzulensID = ?
+         )`,
+      [biraloID]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Hiba a szabad bírálatok lekérésekor:", err);
+    res
+      .status(500)
+      .json({ error: "Hiba történt a szabad bírálatok lekérésekor." });
+  }
+});
+
+app.post("/api/vallal-biralat", async (req, res) => {
+  const { temaID } = req.body;
+  const biraloID = req.session.user?.rvID; // A bejelentkezett bíráló ID-ja
+
+  if (!biraloID) {
+    return res.status(401).json({ error: "Nem vagy bejelentkezve." });
+  }
+
+  try {
+    // Frissítjük a `tema` táblát
+    await pool.execute(
+      `UPDATE tema SET biraloID = ?, biralva = 2 WHERE temaID = ?`,
+      [biraloID, temaID]
+    );
+
+    // Hozzáadjuk a `konzulens` táblához a bírálót
+    await pool.execute(
+      `INSERT INTO biralo (BtemaID, BbiraloID, allapot) VALUES (?, ?, 'elfogadva')`,
+      [temaID, biraloID]
+    );
+
+    res.json({ message: "A téma sikeresen elvállalva!" });
+  } catch (err) {
+    console.error("Hiba a téma elvállalásakor:", err);
+    res.status(500).json({ error: "Hiba történt a téma elvállalásakor." });
+  }
+});
 // Résztvevők lekérdezése
 app.get("/api/resztvevok", async (req, res) => {
   try {
@@ -870,7 +950,7 @@ app.get("/api/konzulens-temak", (req, res) => {
   const konzulensID = req.session.user.rvID;
 
   const sql = `
-    SELECT t.temaID, t.temaCim, t.biraloID, t.biralva,
+    SELECT t.temaID, t.temaCim, t.biraloID, t.biralva, t.szabadBiralat,
       EXISTS (
         SELECT 1 FROM dokumentumok d WHERE d.temaID = t.temaID AND d.tipus = 1
       ) AS temakiiroLapFeltoltve,

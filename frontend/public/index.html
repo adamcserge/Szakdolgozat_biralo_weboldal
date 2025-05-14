@@ -95,17 +95,29 @@
                 </button>
 
                 <!-- Bíráló felkérése gomb -->
+                 <span v-if="tema.temakiiroLapFeltoltve && tema.szakdolgozatFeltoltve && tema.biralva === 0">
+                <button @click="szabadBiralat(tema.temaID)">Bírálatra bocsájtás
+                </button> 
+
                 <button
-                  v-if="tema.temakiiroLapFeltoltve && tema.szakdolgozatFeltoltve && tema.biralva === 0"
                   @click="openModal(tema.temaID)"
                 >
                   Bíráló felkérése
                 </button>
+              </span>
                 <!-- Felkérés folyamatban szöveg -->
-                <span v-else-if="tema.biralva === 1">Felkérés folyamatban</span>
-
+                 <span v-else-if="tema.biralva === 1">
+                <span v-if="tema.szabadBiralat=== 0">Felkérés folyamatban</span>
+                <span v-if="tema.szabadBiralat=== 1">Még nem fogadta el bíráló
+                  <button
+                  @click="openModal(tema.temaID)"
+                >
+                  Bíráló felkérése
+                </button>
+                </span>
+                </span>
                 <!-- Bírálat elfogadva szöveg -->
-                <span v-else-if="tema.biralva === 2">Bírálati felkérés elfogadva</span>
+                <span v-else-if="tema.biralva === 2">Bírálati felkérés elfogadva<span v-if="tema.szabadBiralat=== 1"> <b> {{ getBiraloNevById(tema.biraloID) }}</b> által</span></span>
                 <!-- Bírálat letöltése gomb -->
                 <button
                   v-else-if="tema.biralva === 3"
@@ -286,6 +298,7 @@
 
         <!-- Bírálóként hozzárendelt témák -->
         <h2>Bírálóként hozzárendelt témák</h2>
+        <button @click="openSzabadBiraloModal()">Bírálóként elválalható témák</button>
         <ul>
           <li v-for="tema in biraloTemak" :key="tema.temaID">
             <div><b>Téma: </b>{{ tema.temaCim }}</div>
@@ -358,6 +371,19 @@
           <button @click="showBiralatModal = false">Mégse</button>
           <p>{{ biralatUploadMessage }}</p>
         </div>
+
+        <!-- Szabad Bírálatok Modal -->
+<div v-if="showSzabadBiraloModal" class="modal">
+  <h3>Bírálóként elvállalható témák</h3>
+  <ul>
+    <li v-for="tema in szabadBiralatok" :key="tema.temaID">
+      <strong>{{ tema.temaCim }}</strong>
+      <button @click="vallalBiralat(tema.temaID)">Elvállalom</button>
+    </li>
+  </ul>
+  <p v-if="szabadBiralatok.length === 0">Nincs elvállalható téma.</p>
+  <button @click="showSzabadBiraloModal = false">Bezárás</button>
+</div>
       </div>
     </div>
     <script>
@@ -460,6 +486,8 @@
             tartalom: "",
             TemakSearchQuery: "",
             uzenetek: [],
+            showSzabadBiraloModal: false, // Modális ablak megjelenítése
+            szabadBiralatok: [], // Szabad bírálatok listája
           };
         },
         computed: {
@@ -792,6 +820,10 @@
               console.error("Hiba a konzulens témák lekérésekor:", err);
             }
           },
+          getBiraloNevById(biraloID) {
+              const biralo = this.resztvevok.find((resztvevo) => resztvevo.rvID === biraloID);
+              return biralo ? biralo.rvNEV : "Nincs bíráló";
+          },
           async megtekintTemakiirolap(temaID) {
             try {
               const res = await fetch(
@@ -1071,6 +1103,61 @@
                 alert(err.message || "Hiba történt a bíráló felkérésekor.");
               });
           },
+          szabadBiralat(temaID) {
+            fetch("http://localhost:3000/szabad-biralo", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ temaID }),
+            })
+              .then((res) => {
+                if (!res.ok) throw new Error("Hiba történt a téma bírálatra való feltöltése során.");
+                return res.json();
+              })
+              .then((data) => {
+                alert(data.message || "A téma sikeresen feltöltve bírálatra!");
+                this.fetchKonzulensTemak(); // Bíráló témák újratöltése
+
+              })
+              .catch((err) => {
+                console.error("Hiba a téma bírálatra való feltöltése során:", err);
+                alert(err.message || "Hiba történt a téma bírálatra való feltöltése során.");
+              });
+          },
+
+          async fetchSzabadBiralatok() {
+            try {
+              const res = await fetch("http://localhost:3000/api/szabad-biralatok", {
+                credentials: "include", // Küldi a session cookie-t
+              });
+              if (!res.ok) throw new Error("Hiba a szabad bírálatok lekérésekor.");
+              this.szabadBiralatok = await res.json();
+            } catch (err) {
+              console.error("Hiba a szabad bírálatok lekérésekor:", err);
+              alert("Nem sikerült lekérni a szabad bírálatokat.");
+            }
+          },
+          openSzabadBiraloModal() {
+            this.fetchSzabadBiralatok(); // Szabad bírálatok lekérése
+            this.showSzabadBiraloModal = true; // Modális ablak megnyitása
+          },
+
+          async vallalBiralat(temaID) {
+            try {
+              const res = await fetch("http://localhost:3000/api/vallal-biralat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ temaID }),
+              });
+              if (!res.ok) throw new Error("Hiba a téma elvállalásakor.");
+              alert("A téma sikeresen elvállalva!");
+              this.fetchSzabadBiralatok(); // Frissítjük a szabad bírálatok listáját
+              this.fetchBiraloTemak(); // Frissítjük a bíráló témáit
+            } catch (err) {
+              console.error("Hiba a téma elvállalásakor:", err);
+              alert("Nem sikerült elvállalni a témát.");
+            }
+          },
           async addHallgato() {
             try {
               const res = await fetch("http://localhost:3000/api/hallgato", {
@@ -1186,6 +1273,7 @@ async fetchSajatUzenetek() {
     console.error("Hiba az üzenetek lekérésekor:", err);
   }
 }
+
 
         },
         created() {
