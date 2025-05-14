@@ -225,3 +225,43 @@ ul.szervezetfa li.selected {
   max-height: 300px;
   overflow-y: auto;
 }
+
+.biralolista-item {
+  padding: 15px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.biralolista-cim {
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+/* Gombsor elrendezése: bal és jobb oldal */
+.biralogomb-sor {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap; /* kisebb képernyőn is jól néz ki */
+  gap: 10px;
+}
+
+.bal-gomb {
+  flex-shrink: 0;
+}
+.jobb-gombok {
+  display: flex;
+  align-items: center; /* ez biztosítja a függőleges igazítást */
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.biralat-statusz {
+  background-color: #28a745; /* Zöld háttér */
+  color: white; /* Fehér szöveg */
+  padding: 4px 8px; /* Kicsi belső margó */
+  border-radius: 5px; /* Lekerekített sarok */
+  display: inline-block; /* Ne nyúljon ki */
+}

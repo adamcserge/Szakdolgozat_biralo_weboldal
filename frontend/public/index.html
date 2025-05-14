@@ -305,55 +305,56 @@
 
         <!-- Bírálóként hozzárendelt témák -->
         <h2>Bírálóként hozzárendelt témák</h2>
-        <button @click="openSzabadBiraloModal()">Bírálóként elvállalható témák</button>
+        
         <div class="scrollable-list">
         <ul >
-          <li v-for="tema in biraloTemak" :key="tema.temaID" >
-            <div><b>Téma: </b>{{ tema.temaCim }}</div>
-            <div>
-            <button @click="megtekintTemakiirolap(tema.temaID)">
-              Témakiíró lap megtekintése
-            </button>
-          </div>
-
-            <!-- Elfogadás és Elutasítás gombok -->
-            <div v-if="tema.biralva === 1">
-              <button @click="elfogadFelkeres(tema.temaID)">Elfogadás</button>
-              <button @click="elutasitFelkeres(tema.temaID)">Elutasítás</button>
-            </div>
-
-            <!-- Bírálat feltöltése gomb -->
-            <!--<div v-else-if="tema.biralva === 2">
-              <button @click="openDokumentModal(tema.temaID)">Kapcsolódó dokumentumok</button>
-              <button @click="feltoltBiralat(tema.temaID)">
-                Bírálat feltöltése
-              </button>
-            </div>-->
-            <div v-else-if="tema.biralva === 2">
-              <div v-if="!tema.titoktartasMasTolt || (tema.titoktartasMasTolt && tema.titoktartasEnTolt)">
-                <!-- Ha nincs más által feltöltve vagy ha van, de én is feltöltöttem -->
-                <button @click="openDokumentModal(tema.temaID)">Kapcsolódó dokumentumok</button>
-                <button @click="openBiraloModal(tema.temaID)">Bírálat feltöltése</button>
-              </div>
-            
-              <div v-else>
-                <!-- Ha van más által feltöltve, de én még nem töltöttem fel -->
-                <p><strong>Kapcsolódó dokumentumok megtekintéséhez titoktartási nyilatkozat szükséges.</strong></p>
-            <button v-if="tema.titoktartasMasTolt" @click="downloadTitoktartas(tema.temaID)">
-                  Titoktartási nyilatkozat letöltése
+          <li v-for="tema in biraloTemak" :key="tema.temaID" class="biralolista-item">
+            <!-- Téma címe külön sorban -->
+            <div class="biralolista-cim"><b>Téma:</b> {{ tema.temaCim }}</div>
+          
+            <!-- Gombsor egy sorban: bal oldali és jobb oldali részek -->
+            <div class="biralogomb-sor">
+              <!-- Bal oldalon: Témakiíró lap -->
+              <div class="bal-gomb">
+                <button @click="megtekintTemakiirolap(tema.temaID)">
+                  Témakiíró lap megtekintése
                 </button>
-                <button @click="feltoltDokumentum(tema.temaID, 3)">Kitöltött titoktartási nyilatkozat feltöltése</button>
-            
-                
               </div>
-            </div>
+          
+              <!-- Jobb oldalon: többi gomb -->
+              <div class="jobb-gombok">
+                <template v-if="tema.biralva === 1">
+                  <button @click="elfogadFelkeres(tema.temaID)">Elfogadás</button>
+                  <button @click="elutasitFelkeres(tema.temaID)">Elutasítás</button>
+                </template>
+          
+                <template v-else-if="tema.biralva === 2">
+                  <template v-if="!tema.titoktartasMasTolt || (tema.titoktartasMasTolt && tema.titoktartasEnTolt)">
+                    <button @click="openDokumentModal(tema.temaID)">Kapcsolódó dokumentumok</button>
+                    <button @click="openBiraloModal(tema.temaID)">Bírálat feltöltése</button>
+                  </template>
+                  <template v-else>
+                    
 
-            <!-- Bírálat feltöltve -->
-            <div v-else-if="tema.biralva === 3">
-              <p>Bírálat feltöltve</p>
-              <button @click="openDokumentModal(tema.temaID)">Kapcsolódó dokumentumok</button>
+                    <button v-if="tema.titoktartasMasTolt" @click="downloadTitoktartas(tema.temaID)">
+                      Titoktartási nyilatkozat letöltése
+                    </button>
+                    <button @click="feltoltDokumentum(tema.temaID, 3)">Titoktartási nyilatkozat feltöltése</button>
+                  </template>
+                </template>
+          
+                <template v-else-if="tema.biralva === 3">
+                  <span class="biralat-statusz">Bírálat feltöltve</span>
+                  <button @click="openDokumentModal(tema.temaID)">Kapcsolódó dokumentumok</button>
+                </template>
+              </div>
             </div>
           </li>
+          
+          
+          
+          
+          
         </ul>
       </div>
         <!-- Kapcsolódó dokumentumok modal -->
