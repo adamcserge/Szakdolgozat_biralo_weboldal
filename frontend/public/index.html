@@ -51,12 +51,14 @@
          <div >
           <h3>Elküldött üzeneteid</h3>
           <ul>
-            <li v-for="uzenet in uzenetek" :key="uzenet.id">
+            <li v-for="uzenet in uzenetek" :key="uzenet.uzenetID">
               <strong>Üzenet:</strong> {{ uzenet.tartalom }}<br />
               <strong>Állapot:</strong> {{ uzenet.allapot }}<br />
               <strong>Válasz:</strong>
-              <p v-if="uzenet.valasz === null || uzenet.valasz === ''">Nincs még válasz.</p>
-              <p v-else>{{ uzenet.valasz }}</p>
+              <span v-if="uzenet.valasz === null || uzenet.valasz === ''">
+                Nincs még válasz.
+              </span>
+              <span v-else>{{ uzenet.valasz }}</span>
             </li>
           </ul>
           <p v-if="uzenetek.length === 0">Nincs elküldött üzeneted.</p>

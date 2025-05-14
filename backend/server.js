@@ -1188,6 +1188,26 @@ app.post("/api/feldolgozva", async (req, res) => {
   }
 });
 
+// Válasz küldése egy üzenetre
+app.post("/api/mentesValasz", async (req, res) => {
+  const { uzenetID, valasz } = req.body;
+
+  if (!uzenetID || !valasz) {
+    return res.status(400).json({ error: "Hiányzó adatok." });
+  }
+
+  try {
+    await pool.execute(
+      `UPDATE uzenetek SET valasz = ?, allapot = 'megoldva' WHERE uzenetID = ?`,
+      [valasz, uzenetID]
+    );
+    res.json({ message: "Visszajelzés sikeresen mentve." });
+  } catch (err) {
+    console.error("Hiba a visszajelzés mentésekor:", err);
+    res.status(500).json({ error: "Hiba történt a visszajelzés mentésekor." });
+  }
+});
+
 app.post("/api/torolUzenet", async (req, res) => {
   const { uzenetID } = req.body;
 

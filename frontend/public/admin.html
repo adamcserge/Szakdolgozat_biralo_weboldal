@@ -204,6 +204,18 @@
           </div>
           <button @click="showAdatModal = false">Bezárás</button>
         </div>
+        <!-- Feldolgozva modal -->
+        <div v-if="showFeldolgozvaModal" class="modal">
+          <h3>Üzenet feldolgozása</h3>
+          <p><strong>Üzenet tartalma:</strong></p>
+          <p>{{ feldolgozandoUzenet.tartalom }}</p>
+          <textarea
+            v-model="feldolgozandoUzenet.valasz"
+            placeholder="Írd be a visszajelzést..."
+          ></textarea>
+          <button @click="mentesValasz">Visszajelzés mentése</button>
+          <button @click="showFeldolgozvaModal = false">Mégse</button>
+        </div>
       </div>
     </div>
 
@@ -269,6 +281,12 @@
             showAdminModal: false, // Adminok modális ablak megjelenítése
             showSzervezetModal: false, // Szervezeti egység modális ablak megjelenítése
             showAdatModal: false, // Résztvevő adatainak módosítása modális ablak megjelenítése
+            showFeldolgozvaModal: false, // A modális ablak megjelenítéséhez
+            feldolgozandoUzenet: {
+              tartalom: "",
+              valasz: "",
+              uzenetID: null,
+            }, // Az aktuálisan feldolgozandó üzenet
             szervezetID: null, // Szervezeti egység azonosítója
             searchQuery: "",
             adminSearchQuery: "",
@@ -452,18 +470,16 @@
               alert("Hiba történt az üzenet elolvasásakor.");
             }
           },
-          async feldolgozva(uzenetID) {
-            try {
-              const res = await axios.post(
-                "http://localhost:3000/api/feldolgozva",
-                { uzenetID },
-                { withCredentials: true }
+          feldolgozva(uzenetID) {
+            const uzenet = this.uzenetek.find((u) => u.uzenetID === uzenetID);
+            if (uzenet) {
+              this.feldolgozandoUzenet = { ...uzenet }; // Másolatot készítünk az üzenetről
+              this.showFeldolgozvaModal = true; // Megnyitjuk a modális ablakot
+            } else {
+              console.error(
+                "Nem található az üzenet az adott ID-val:",
+                uzenetID
               );
-              alert(res.data.message);
-              this.refreshData(); // Frissítjük az adatokat
-            } catch (err) {
-              console.error("Hiba az üzenet feldolgozásakor:", err);
-              alert("Hiba történt az üzenet feldolgozásakor.");
             }
           },
           async torolUzenet(uzenetID) {
@@ -478,6 +494,33 @@
             } catch (err) {
               console.error("Hiba az üzenet törlésekor:", err);
               alert("Hiba történt az üzenet törlésekor.");
+            }
+          },
+          async mentesValasz() {
+            console.log("Mentés előtt:", this.feldolgozandoUzenet);
+            if (
+              !this.feldolgozandoUzenet.uzenetID ||
+              !this.feldolgozandoUzenet.valasz
+            ) {
+              alert("Kérjük, töltsd ki a visszajelzést!");
+              return;
+            }
+
+            try {
+              const res = await axios.post(
+                "http://localhost:3000/api/mentesValasz",
+                {
+                  uzenetID: this.feldolgozandoUzenet.uzenetID,
+                  valasz: this.feldolgozandoUzenet.valasz,
+                },
+                { withCredentials: true }
+              );
+              alert(res.data.message);
+              this.showFeldolgozvaModal = false;
+              this.refreshData(); // Frissítjük az adatokat
+            } catch (err) {
+              console.error("Hiba a visszajelzés mentésekor:", err);
+              alert("Hiba történt a visszajelzés mentésekor.");
             }
           },
           //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
