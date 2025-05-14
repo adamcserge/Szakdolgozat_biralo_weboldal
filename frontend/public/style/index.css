@@ -222,6 +222,6 @@ ul.szervezetfa li.selected {
 }
 
 .scrollable-list {
-  height: 1000px;
+  max-height: 300px;
   overflow-y: auto;
 }

@@ -48,7 +48,7 @@
        
 
         <p>Üdvözlöm az oldalon, {{ user.rvFelhasznalonev }}!</p>
-         <div >
+         <div v-if="user.isAdmin === 0">
           <h3>Elküldött üzeneteid</h3>
           <ul>
             <li v-for="uzenet in uzenetek" :key="uzenet.uzenetID">
@@ -64,6 +64,8 @@
           <p v-if="uzenetek.length === 0">Nincs elküldött üzeneted.</p>
         </div>
         <div><h2>Konzultált témái</h2>
+        <div v-if="konzulensTemak.length === 0"><b>Nincsenek konzultált témák</b></div>
+        <div v-if="konzulensTemak.length > 0">
         <input
                 type="text"
                 v-model="TemakSearchQuery"
@@ -108,7 +110,7 @@
                 <!-- Felkérés folyamatban szöveg -->
                  <span v-else-if="tema.biralva === 1">
                 <span v-if="tema.szabadBiralat=== 0">Felkérés folyamatban</span>
-                <span v-if="tema.szabadBiralat=== 1">Még nem fogadta el bíráló
+                <span v-if="tema.szabadBiralat=== 1">Még nem vállalta el bíráló
                   <button
                   @click="openModal(tema.temaID)"
                 >
@@ -117,7 +119,10 @@
                 </span>
                 </span>
                 <!-- Bírálat elfogadva szöveg -->
-                <span v-else-if="tema.biralva === 2">Bírálati felkérés elfogadva<span v-if="tema.szabadBiralat=== 1"> <b> {{ getBiraloNevById(tema.biraloID) }}</b> által</span></span>
+                 <span v-else-if="tema.biralva === 2">
+                <span v-if="tema.szabadBiralat=== 0">Bírálati felkérés elfogadva</span>
+                <span v-if="tema.szabadBiralat=== 1">Bírálat elvállalva <b> {{ getBiraloNevById(tema.biraloID) }}</b> által</span>
+              </span>
                 <!-- Bírálat letöltése gomb -->
                 <button
                   v-else-if="tema.biralva === 3"
@@ -131,6 +136,7 @@
           </div>
           <div v-if="filteredTemak.length === 0"><b>Nincs találat a címek között.</b></div>
         </template>
+      </div>
         </div>
         </div>
 
@@ -177,7 +183,8 @@
 
         <!-- Feltöltött fájlok -->
         <h2>Feltöltött dokumentjai</h2>
-        <button @click="loadFiles">Fájlok betöltése</button>
+        
+        <div class="scrollable-list">
         <ul>
           <li v-for="file in files" :key="file.dokID">
             <strong>Téma:</strong> {{ file.temaCim || "Nincs hozzárendelve"
@@ -194,7 +201,7 @@
             </button>
           </li>
         </ul>
-
+</div>
         <!-- Téma feltöltése -->
         <h2>Új téma feltöltése</h2>
         <form @submit.prevent="submitTema">
@@ -298,9 +305,10 @@
 
         <!-- Bírálóként hozzárendelt témák -->
         <h2>Bírálóként hozzárendelt témák</h2>
-        <button @click="openSzabadBiraloModal()">Bírálóként elválalható témák</button>
-        <ul>
-          <li v-for="tema in biraloTemak" :key="tema.temaID">
+        <button @click="openSzabadBiraloModal()">Bírálóként elvállalható témák</button>
+        <div class="scrollable-list">
+        <ul >
+          <li v-for="tema in biraloTemak" :key="tema.temaID" >
             <div><b>Téma: </b>{{ tema.temaCim }}</div>
             <div>
             <button @click="megtekintTemakiirolap(tema.temaID)">
@@ -347,6 +355,7 @@
             </div>
           </li>
         </ul>
+      </div>
         <!-- Kapcsolódó dokumentumok modal -->
         <div v-if="showDokumentModal" class="modal">
           <h3>Kapcsolódó dokumentumok</h3>
@@ -379,6 +388,9 @@
     <li v-for="tema in szabadBiralatok" :key="tema.temaID">
       <strong>{{ tema.temaCim }}</strong>
       <button @click="vallalBiralat(tema.temaID)">Elvállalom</button>
+      <button @click="megtekintTemakiirolap(tema.temaID)">
+        Témakiíró lap megtekintése
+      </button>
     </li>
   </ul>
   <p v-if="szabadBiralatok.length === 0">Nincs elvállalható téma.</p>
@@ -660,6 +672,7 @@
             } catch (err) {
               console.error("Fájlok betöltése hiba:", err);
             }
+
           },
           async downloadFile(filename) {
             const url = `http://localhost:3000/api/letoltes/${filename}`;
@@ -1160,6 +1173,20 @@
           },
           async addHallgato() {
             try {
+              // Ellenőrizzük, hogy létezik-e már a hallgató
+              const ellenorzesRes = await fetch("http://localhost:3000/api/hallgato/ellenorzes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ hallgatoNK: this.ujHallgato.neptun }),
+              });
+          
+              if (!ellenorzesRes.ok) {
+                const errorData = await ellenorzesRes.json();
+                alert(errorData.error || "Hiba történt az ellenőrzés során.");
+                return;
+              }
+          
+              // Ha nem létezik, folytatjuk a hallgató hozzáadását
               const res = await fetch("http://localhost:3000/api/hallgato", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -1169,7 +1196,7 @@
                   hallgatoEMAIL: this.ujHallgato.email,
                 }),
               });
-
+          
               if (!res.ok) throw new Error(`Hiba: ${res.status}`);
               const data = await res.json();
               this.hallgatoUzenet = data.message;
@@ -1190,6 +1217,7 @@
               this.loadResztvevok(); // Résztvevők betöltése
               this.fetchSzervezetek(); // Szervezetek betöltése
               this.fetchSajatUzenetek(); // Üzenetek betöltése
+              this.loadFiles(); // Feltöltött fájlok betöltése
 
             } else {
               // Ha nincs bejelentkezve, töröljük az adatokat
@@ -1285,6 +1313,8 @@ async fetchSajatUzenetek() {
           this.fetchBiraloTemak(); // Bíráló témák betöltése
           this.fetchKonzulensTemak(); // Konzulens témák betöltése
           this.fetchSajatUzenetek(); // Üzenetek betöltése
+          this.fetchSzabadBiralatok(); // Szabad bírálatok betöltése
+          this.loadFiles(); // Feltöltött fájlok betöltése
           window.addEventListener("message", this.messageListener);
         },
 

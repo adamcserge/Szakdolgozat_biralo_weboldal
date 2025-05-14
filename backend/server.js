@@ -132,6 +132,32 @@ app.post("/api/hallgato", (req, res) => {
   });
 });
 
+app.post("/api/hallgato/ellenorzes", async (req, res) => {
+  const { hallgatoNK } = req.body;
+
+  if (!hallgatoNK) {
+    return res.status(400).json({ error: "A Neptun kód megadása kötelező." });
+  }
+
+  try {
+    const [rows] = await pool.execute(
+      `SELECT COUNT(*) AS count FROM hallgato WHERE hallgatoNK = ?`,
+      [hallgatoNK]
+    );
+
+    if (rows[0].count > 0) {
+      return res
+        .status(409)
+        .json({ error: "Ez a hallgató már létezik a rendszerben." });
+    }
+
+    res.json({ message: "A hallgató még nem létezik." });
+  } catch (err) {
+    console.error("Hiba a hallgató ellenőrzésekor:", err);
+    res.status(500).json({ error: "Hiba történt a hallgató ellenőrzésekor." });
+  }
+});
+
 // Bejelentkezés
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
