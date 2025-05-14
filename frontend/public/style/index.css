@@ -115,7 +115,7 @@ body::after {
 
 .logout-wrapper {
   position: fixed;
-  top: 20px;
+  top: 90px;
   right: 20px;
   z-index: 100;
 }
@@ -129,8 +129,15 @@ body::after {
 }
 .admin-button {
   position: fixed;
-  top: 20px;
-  right: 140px;
+  top: 50px;
+  right: 20px;
+  z-index: 100;
+}
+
+.szabbir-button {
+  position: fixed;
+  top: 10px;
+  right: 20px;
   z-index: 100;
 }
 

@@ -113,23 +113,31 @@ body::after {
   }
 }
 
-.logout-wrapper {
+.logout-button {
   position: fixed;
-  top: 20px;
+  top: 10px;
   right: 20px;
   z-index: 100;
 }
 
-.logout-wrapper button {
-  background-color: #e74c3c;
+.logout-button {
+  background-color: #e74c3c; /* Piros háttér */
+  color: white; /* Fehér szöveg */
+  border: none;
+  padding: 8px 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
 }
 
-.logout-wrapper button:hover {
-  background-color: #c0392b;
+.logout-button:hover {
+  background-color: #c0392b; /* Sötétebb piros hover állapot */
 }
+
 .admin-button {
   position: fixed;
-  top: 20px;
+  top: 10px;
   right: 140px;
   z-index: 100;
 }
@@ -239,4 +247,52 @@ ul.szervezetfa li.selected {
   box-sizing: border-box;
   border: 1px solid #ccc;
   border-radius: 4px;
+}
+
+.admin-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.admin-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #ccc;
+}
+
+.admin-nev {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.admin-btn {
+  font-size: 20px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-add {
+  background-color: #28a745; /* zöld */
+}
+
+.admin-remove {
+  background-color: #dc3545; /* piros */
+}
+
+.admin-btn:hover {
+  opacity: 0.9;
+}
+
+.close-btn {
+  margin-top: 12px;
 }

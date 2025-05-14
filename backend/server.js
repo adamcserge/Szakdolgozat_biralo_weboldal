@@ -861,7 +861,7 @@ app.post("/api/vallal-biralat", async (req, res) => {
 app.get("/api/resztvevok", async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      "SELECT rvID, rvNEV, rvEmail, isAdmin FROM resztvevok"
+      "SELECT rvID, rvNEV, rvEmail, isAdmin, rvSzervezetID FROM resztvevok"
     );
     res.json(rows);
   } catch (err) {

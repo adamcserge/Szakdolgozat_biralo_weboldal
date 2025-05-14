@@ -19,7 +19,7 @@
       <div v-else id="else">
         <div>
           Üdvözlöm az admin felületen, {{ user.rvFelhasznalonev }}!
-          <button @click="logout" class="logout-wrapper">Kijelentkezés</button>
+          <button @click="logout" class="logout-button">Kijelentkezés</button>
           <button @click="goToIndex" class="admin-button">
             Vissza a főoldalra
           </button>
@@ -60,50 +60,64 @@
         </div>
 
         <div>
-
           <!-- Modális ablak -->
-        
-            <button @click="showAdminModal = true">
-              Admin jogosultság kezelése
-            </button>
-          </div>
 
-          <div v-if="showAdminModal" class="modal">
-            <div>
-              <h2>Admin jogosultság kezelése</h2>
-              <input
-                type="text"
-                v-model="adminSearchQuery"
-                placeholder="Keresés név alapján..."
-                class="search-input"
-              />
+          <button @click="showAdminModal = true">
+            Admin jogosultság kezelése
+          </button>
+        </div>
 
-              <div class="scrollable-list">
-                <ul>
-                  <li
-                    v-for="resztvevo in filteredAdminok"
-                    :key="resztvevo.rvID"
+        <div v-if="showAdminModal" class="modal">
+          <div class="admin-modal-content">
+            <h2>Admin jogosultság kezelése</h2>
+
+            <input
+              type="text"
+              v-model="adminSearchQuery"
+              placeholder="Keresés név alapján..."
+              class="search-input"
+            />
+
+            <div class="scrollable-list">
+              <ul class="admin-list">
+                <li
+                  v-for="resztvevo in filteredAdminok"
+                  :key="resztvevo.rvID"
+                  class="admin-list-item"
+                >
+                  <span class="admin-nev">
+                    {{ resztvevo.rvNEV }} – {{
+                    getSzervezetNevById(resztvevo.rvSzervezetID) }}
+                  </span>
+                  <button
+                    v-if="resztvevo.isAdmin"
+                    @click="deleteAdmin(resztvevo.rvID)"
+                    class="admin-btn admin-remove"
+                    title="Admin jog eltávolítása"
                   >
-                    {{ resztvevo.rvNEV }} - {{ resztvevo.szervezetNEV }}
-                    <div>
-                      <button
-                        v-if="resztvevo.isAdmin"
-                        @click="deleteAdmin(resztvevo.rvID)"
-                      >
-                        -
-                      </button v-else-if="restvevo.isAdmin">
-                      <button v-else @click="addAdmin(resztvevo.rvID)">
-                        +
-                      </button>
-                    </div>
-                  </li>
-                </ul>
-                <div v-else>Nincs találat a felhasználók közt.</div>
+                    −
+                  </button>
+                  <button
+                    v-else
+                    @click="addAdmin(resztvevo.rvID)"
+                    class="admin-btn admin-add"
+                    title="Admin jog hozzáadása"
+                  >
+                    +
+                  </button>
+                </li>
+              </ul>
+              <div v-if="filteredAdminok.length === 0">
+                Nincs találat a felhasználók közt.
               </div>
             </div>
-            <button @click="showAdminModal = false">Bezárás</button>
+
+            <button @click="showAdminModal = false" class="close-btn">
+              Bezárás
+            </button>
           </div>
         </div>
+
         <button @click="showSzervezetModal = true">
           Szervezeti egység hozzáadása
         </button>
@@ -600,7 +614,7 @@
               this.adminok = [];
               this.uzenetek = []; // Üzenetek törlése kijelentkezés után
               this.szervezetek = []; // Szervezetek törlése kijelentkezés után
-              this.betoltResztvevok = []; // Résztvevők törlése kijelentkezés után
+              this.resztvevok = []; // Résztvevők törlése kijelentkezés után
             }
           },
           //////// Résztvevők adatainak módosítása

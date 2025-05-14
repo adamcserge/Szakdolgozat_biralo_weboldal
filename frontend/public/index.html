@@ -17,6 +17,8 @@
       </div>
 
       <div v-else>
+        <div>
+        <button class="szabbir-button" @click="openSzabadBiraloModal()">Bírálóként elvállalható témák</button>
        
         <div v-if="user.isAdmin === 1" class="admin-button">
           <button @click="OpenAdnimPage">Adminisztrációs felület</button>
@@ -24,6 +26,7 @@
         <div v-else class="admin-button">
           <button @click="showUzenetModal = true">Ügyfélszolgálat</button>
         </div>
+      </div>
          <div class="logout-wrapper">
           <button @click="logout">Kijelentkezés</button>
         </div>
