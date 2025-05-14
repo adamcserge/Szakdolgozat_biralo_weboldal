@@ -350,11 +350,6 @@
               </div>
             </div>
           </li>
-          
-          
-          
-          
-          
         </ul>
       </div>
         <!-- Kapcsolódó dokumentumok modal -->
@@ -518,6 +513,10 @@
               this.user = res.data;
               this.auth = true;
               this.refreshData(); // Frissítjük az adatokat bejelentkezés után
+              if (this.user && this.user.rvSzervezetID) {
+      this.ujTema.szervezetID = this.user.rvSzervezetID;
+      console.log("Alapértelmezett szervezet ID beállítva:", this.ujTema.szervezetID);
+    }
             } catch (err) {
               this.auth = false;
               this.user = null;
@@ -1314,8 +1313,8 @@ async fetchSajatUzenetek() {
           this.fetchBiraloTemak(); // Bíráló témák betöltése
           this.fetchKonzulensTemak(); // Konzulens témák betöltése
           this.fetchSajatUzenetek(); // Üzenetek betöltése
-          this.fetchSzabadBiralatok(); // Szabad bírálatok betöltése
           this.loadFiles(); // Feltöltött fájlok betöltése
+          
           window.addEventListener("message", this.messageListener);
         },
 
