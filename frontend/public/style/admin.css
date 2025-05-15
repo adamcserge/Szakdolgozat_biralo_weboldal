@@ -236,7 +236,7 @@ ul.szervezetfa li.selected {
   margin-top: 10px;
 }
 .scrollable-list {
-  max-height: 300px;
+  max-height: 350px;
   overflow-y: auto;
 }
 
@@ -295,4 +295,9 @@ ul.szervezetfa li.selected {
 
 .close-btn {
   margin-top: 12px;
+}
+
+.gomb {
+  width: 250px;
+  margin-top: 15px;
 }

@@ -18,7 +18,7 @@
 
       <div v-else id="else">
         <div>
-          Üdvözlöm az admin felületen, {{ user.rvFelhasznalonev }}!
+          <h2>Üdvözlöm az admin felületen, {{ user.rvFelhasznalonev }}!</h2>
           <button @click="logout" class="logout-button">Kijelentkezés</button>
           <button @click="goToIndex" class="admin-button">
             Vissza a főoldalra
@@ -62,7 +62,7 @@
         <div>
           <!-- Modális ablak -->
 
-          <button @click="showAdminModal = true">
+          <button @click="showAdminModal = true" class="gomb">
             Admin jogosultság kezelése
           </button>
         </div>
@@ -118,7 +118,7 @@
           </div>
         </div>
 
-        <button @click="showSzervezetModal = true">
+        <button @click="showSzervezetModal = true" class="gomb">
           Szervezeti egység hozzáadása
         </button>
         <div v-if="showSzervezetModal" class="modal">
@@ -155,7 +155,7 @@
         </div>
         <!--Résztvevők adatfrissítése-->
         <div>
-          <button @click="showAdatModal=true">
+          <button @click="showAdatModal=true" class="gomb">
             Résztvevő adatainak módosítása
           </button>
         </div>

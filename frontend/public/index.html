@@ -12,7 +12,7 @@
   <body>
     <div id="app-auth">
       <div v-if="!auth">
-        <p>Üdvözlöm az oldalon, kérlek jelentkezz be:</p>
+        <H1>Üdvözlöm az oldalon, kérlek jelentkezz be:</H1>
         <button @click="login">Bejelentkezés</button>
       </div>
 
@@ -50,7 +50,7 @@
 
        
 
-        <p>Üdvözlöm az oldalon, {{ user.rvFelhasznalonev }}!</p>
+        <h1>Üdvözlöm az oldalon, {{ user.rvFelhasznalonev }}!</h1>
          <div v-if="user.isAdmin === 0">
           <h3>Elküldött üzeneteid</h3>
           <ul>
